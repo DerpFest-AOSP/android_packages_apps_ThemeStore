@@ -242,6 +242,7 @@ private fun getCategoryDisplayName(categoryId: String): String {
         "systemui" -> "System UI"
         "wifi" -> "WiFi Icons"
         "signal" -> "Signal Icons"
+        "android.customization.sb_data" -> "Mobile data icons"
         else -> categoryId.replaceFirstChar { it.uppercase() }
     }
 }
@@ -250,6 +251,7 @@ private fun getCategoryIcon(categoryId: String): ImageVector {
     return when (categoryId) {
         "wifi" -> Icons.Default.Wifi
         "signal" -> Icons.Default.SignalCellularAlt
+        "android.customization.sb_data" -> Icons.Default.DataUsage
         "systemui" -> Icons.Default.SettingsApplications
         "android" -> Icons.Default.Android
         else -> Icons.Default.Category

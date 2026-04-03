@@ -39,6 +39,8 @@ class ThemeEngineProxy(private val context: Context) {
             /** OMS overlay categories (PackageInfo.overlayCategory). */
             const val OMS_WIFI_ICON = "android.theme.customization.wifi_icon"
             const val OMS_SIGNAL_ICON = "android.theme.customization.signal_icon"
+            /** Mobile data type icons (LTE, 5G, etc.) in the status bar. */
+            const val OMS_DATA_ICON = "android.customization.sb_data"
             
             const val ANDROID = "android"
             const val SYSTEMUI = "systemui"

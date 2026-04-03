@@ -354,6 +354,7 @@ private fun getComponentDisplayName(componentId: String): String {
     return when (componentId) {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi icons"
         "android.theme.customization.signal_icon" -> "Signal icons"
+        "android.customization.sb_data" -> "Mobile data icons"
         "statusbar_wifi", "wifi" -> "WiFi Icons"
         "statusbar_signal", "signal" -> "Signal Icons"
         "android" -> "Android Framework"
@@ -369,6 +370,7 @@ private fun getComponentDescription(componentId: String): String {
     return when (componentId) {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi strength indicators in the status bar"
         "android.theme.customization.signal_icon" -> "Cellular signal indicators in the status bar"
+        "android.customization.sb_data" -> "Network type labels (LTE, 5G, etc.) next to the signal icon"
         "statusbar_wifi", "wifi" -> "WiFi signal indicators in status bar"
         "statusbar_signal", "signal" -> "Mobile network indicators in status bar"
         "android" -> "Core Android framework icons"

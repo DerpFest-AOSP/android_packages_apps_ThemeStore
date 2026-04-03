@@ -23,6 +23,7 @@ ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
 
 WIFI_CAT = "android.theme.customization.wifi_icon"
 SIGNAL_CAT = "android.theme.customization.signal_icon"
+DATA_CAT = "android.customization.sb_data"
 
 
 def parse_manifest(path: str) -> dict | None:
@@ -46,13 +47,18 @@ def parse_manifest(path: str) -> dict | None:
         elif tag == "application":
             label = el.get(ANDROID_NS + "label") or el.get("label")
 
-    if category not in (WIFI_CAT, SIGNAL_CAT):
+    if category not in (WIFI_CAT, SIGNAL_CAT, DATA_CAT):
         return None
 
     if not label:
         label = pkg.rsplit(".", 1)[-1]
 
-    kind = "wifi" if category == WIFI_CAT else "signal"
+    if category == WIFI_CAT:
+        kind = "wifi"
+    elif category == SIGNAL_CAT:
+        kind = "signal"
+    else:
+        kind = "data"
     return {
         "package": pkg,
         "label": label,
@@ -71,8 +77,11 @@ def scan(icons_root: str) -> list[dict]:
         if info:
             entries.append(info)
 
-    # Stable order: Wi‑Fi first, then signal; by label
-    entries.sort(key=lambda e: (0 if e["kind"] == "wifi" else 1, e["label"].lower()))
+    # Stable order: Wi‑Fi, signal, data; by label
+    kind_order = {"wifi": 0, "signal": 1, "data": 2}
+    entries.sort(
+        key=lambda e: (kind_order.get(e["kind"], 9), e["label"].lower())
+    )
     return entries
 
 

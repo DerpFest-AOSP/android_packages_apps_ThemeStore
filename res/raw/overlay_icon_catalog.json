@@ -217,6 +217,36 @@
       "label": "Zig-Zag",
       "kind": "signal",
       "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.data6",
+      "label": "Aurora",
+      "kind": "data",
+      "customizationKey": "android.customization.sb_data"
+    },
+    {
+      "package": "com.custom.overlay.systemui.data7",
+      "label": "FaintUI",
+      "kind": "data",
+      "customizationKey": "android.customization.sb_data"
+    },
+    {
+      "package": "com.custom.overlay.systemui.data8",
+      "label": "Gradicon",
+      "kind": "data",
+      "customizationKey": "android.customization.sb_data"
+    },
+    {
+      "package": "com.custom.overlay.systemui.data9",
+      "label": "Lorn",
+      "kind": "data",
+      "customizationKey": "android.customization.sb_data"
+    },
+    {
+      "package": "com.custom.overlay.systemui.data10",
+      "label": "Plumpy",
+      "kind": "data",
+      "customizationKey": "android.customization.sb_data"
     }
   ]
 }

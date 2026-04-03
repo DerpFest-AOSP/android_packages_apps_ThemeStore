@@ -41,9 +41,12 @@ class ThemeRepository(private val context: Context) {
 
         const val CATEGORY_WIFI = "android.theme.customization.wifi_icon"
         const val CATEGORY_SIGNAL = "android.theme.customization.signal_icon"
+        /** Status bar mobile data type indicators (LTE, 5G, etc.) — OMS overlay category. */
+        const val CATEGORY_DATA = "android.customization.sb_data"
 
         const val ID_CATEGORY_WIFI = "wifi_icons"
         const val ID_CATEGORY_SIGNAL = "signal_icons"
+        const val ID_CATEGORY_DATA = "data_icons"
     }
     
     private var cachedResponse: ThemesResponse? = null
@@ -76,6 +79,7 @@ class ThemeRepository(private val context: Context) {
                     val categoryId = when (kind) {
                         "wifi" -> ID_CATEGORY_WIFI
                         "signal" -> ID_CATEGORY_SIGNAL
+                        "data" -> ID_CATEGORY_DATA
                         else -> continue
                     }
                     
@@ -91,6 +95,7 @@ class ThemeRepository(private val context: Context) {
                             name = label,
                             description = when (kind) {
                                 "wifi" -> context.getString(R.string.wifi_icons_desc)
+                                "data" -> context.getString(R.string.data_icons_desc)
                                 else -> context.getString(R.string.signal_icons_desc)
                             },
                             author = context.getString(R.string.bundled_overlay_author),
@@ -127,6 +132,11 @@ class ThemeRepository(private val context: Context) {
                         id = ID_CATEGORY_SIGNAL,
                         name = context.getString(R.string.section_signal_icons),
                         icon = "signal_cellular_alt"
+                    ),
+                    ThemeCategory(
+                        id = ID_CATEGORY_DATA,
+                        name = context.getString(R.string.section_data_icons),
+                        icon = "data_usage"
                     )
                 )
                 
