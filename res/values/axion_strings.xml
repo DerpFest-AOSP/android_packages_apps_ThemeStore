@@ -30,7 +30,6 @@
     <string name="search_resource_hint">e.g. ic_bluetooth, stat_sys_data, ic_qs_</string>
     <string name="search_results_count">%d resources found</string>
 
-    <string name="featured">Featured</string>
     <string name="installed">Installed</string>
     <string name="section_currently_applied">Currently applied</string>
     <string name="themes">Themes</string>

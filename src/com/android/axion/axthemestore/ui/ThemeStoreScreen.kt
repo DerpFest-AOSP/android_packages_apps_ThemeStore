@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.pager.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -449,17 +448,6 @@ private fun BrowseScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        val featuredThemes = uiState.themes.take(3)
-                        if (featuredThemes.isNotEmpty()) {
-                            item {
-                                FeaturedCarousel(
-                                    themes = featuredThemes,
-                                    onThemeClick = onThemeClick
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                            }
-                        }
-                        
                         if (appliedThemes.isNotEmpty()) {
                             item {
                                 ThemeSection(
@@ -779,150 +767,6 @@ private fun CompactThemeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FeaturedCarousel(
-    themes: List<Theme>,
-    onThemeClick: (Theme) -> Unit
-) {
-    val pagerState = rememberPagerState(pageCount = { themes.size })
-    
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.featured),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
-        )
-        
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 16.dp,
-            modifier = Modifier.height(200.dp)
-        ) { page ->
-            val theme = themes[page]
-            FeaturedThemeCard(
-                theme = theme,
-                onClick = { onThemeClick(theme) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun FeaturedThemeCard(
-    theme: Theme,
-    onClick: () -> Unit
-) {
-    val containerColor = MaterialTheme.colorScheme.primaryContainer
-    val iconTint = if (containerColor.luminance() < 0.4f) Color.White else Color.Black
-
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxSize(),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor
-        )
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            FeaturedPreviewContent(theme = theme, iconTint = iconTint)
-
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.6f)
-                            ),
-                            startY = 100f
-                        )
-                    )
-            )
-
-            val scrimmedBg = lerp(containerColor, Color.Black, 0.6f)
-            val textColor = if (scrimmedBg.luminance() < 0.4f) Color.White else Color.Black
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = theme.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor
-                )
-                Text(
-                    text = theme.author,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor.copy(alpha = 0.8f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FeaturedPreviewContent(theme: Theme, iconTint: Color) {
-    val context = LocalContext.current
-    val previewMap = remember {
-        val map = mutableMapOf<String, String>()
-        try {
-            val entries = context.resources.getStringArray(R.array.overlay_preview_map)
-            for (entry in entries) {
-                val parts = entry.split("|", limit = 2)
-                if (parts.size == 2) map[parts[0]] = parts[1]
-            }
-        } catch (_: Exception) {}
-        map
-    }
-
-    val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
-    val prefix = previewMap[packageName] ?: ""
-    val resIds = if (prefix.isNotEmpty()) {
-        (1..4).mapNotNull { i ->
-            val id = context.resources.getIdentifier("${prefix}_$i", "drawable", context.packageName)
-            if (id != 0) id else null
-        }
-    } else emptyList()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (resIds.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                for (resId in resIds) {
-                    Image(
-                        painter = painterResource(resId),
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        colorFilter = ColorFilter.tint(iconTint)
-                    )
-                }
             }
         }
     }
