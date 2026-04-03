@@ -57,7 +57,6 @@ fun MainScreen(viewModel: ThemeStoreViewModel) {
         val packageReceiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 viewModel.loadThemes(forceRefresh = true)
-                viewModel.loadIconPacks()
             }
         }
         

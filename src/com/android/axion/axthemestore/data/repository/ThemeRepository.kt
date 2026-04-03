@@ -27,8 +27,6 @@ import com.android.axion.axthemestore.data.model.ThemesResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import com.android.axion.axthemestore.data.model.IconPack
-import android.content.Intent
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -331,48 +329,6 @@ class ThemeRepository(private val context: Context) {
         }
         
         return listOf("android", "systemui")
-    }
-    
-    suspend fun getInstalledIconPacks(): List<IconPack> = withContext(Dispatchers.IO) {
-        val iconPacks = mutableListOf<IconPack>()
-        val pm = context.packageManager
-        
-        val intentActions = listOf(
-            "org.adw.launcher.THEMES",
-            "com.teslacoilsw.launcher.THEME"
-        )
-        
-        val seenPackages = mutableSetOf<String>()
-        
-        for (action in intentActions) {
-            val intent = Intent(action)
-            val formatList = pm.queryIntentActivities(intent, PackageManager.GET_META_DATA)
-            
-            android.util.Log.d("ThemeRepository", "Icon pack query for action $action found ${formatList.size} packages")
-            
-            for (resolveInfo in formatList) {
-                val packageName = resolveInfo.activityInfo.packageName
-                if (packageName !in seenPackages) {
-                    try {
-                        val appInfo = pm.getApplicationInfo(packageName, 0)
-                        val label = pm.getApplicationLabel(appInfo).toString()
-                        val icon = pm.getApplicationIcon(appInfo)
-                        
-                        iconPacks.add(IconPack(packageName, label, icon))
-                        seenPackages.add(packageName)
-                        android.util.Log.d("ThemeRepository", "Added icon pack: $label ($packageName)")
-                    } catch (e: Exception) {
-                        android.util.Log.e("ThemeRepository", "Failed to load icon pack $packageName", e)
-                    }
-                }
-            }
-        }
-        
-        android.util.Log.d("ThemeRepository", "Total icon packs found: ${iconPacks.size}")
-        
-        val sortedPacks = iconPacks.sortedBy { it.label }
-        
-        listOf(IconPack("", "System Default", null)) + sortedPacks
     }
     
 }

@@ -21,7 +21,6 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.axion.axthemestore.data.model.IconPack
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeInstallState
@@ -72,8 +71,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     init {
         loadThemes()
         loadUiStyle()
-        loadIconPacks()
-        loadThemedIconStyle()
         refreshComponentStates()
         loadSearchHistory()
     }
@@ -726,66 +723,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun loadIconPacks() {
-        viewModelScope.launch {
-            val packs = repository.getInstalledIconPacks()
-            val currentPack = themeEngineProxy.getIconPack()
-            
-            _uiState.update { 
-                it.copy(
-                    iconPacks = packs,
-                    currentIconPack = currentPack
-                ) 
-            }
-        }
-    }
-
-    fun applyIconPack(packageName: String) {
-        viewModelScope.launch {
-            val success = if (packageName.isEmpty()) {
-                themeEngineProxy.clearIconPack()
-            } else {
-                themeEngineProxy.setIconPack(packageName)
-            }
-            
-            if (success) {
-                _uiState.update { it.copy(currentIconPack = if (packageName.isEmpty()) null else packageName) }
-            }
-        }
-    }
-    
-    fun loadThemedIconStyle() {
-        viewModelScope.launch {
-            val style = themeEngineProxy.getThemedIconStyle()
-            val enabled = themeEngineProxy.isThemedIconsEnabled()
-            _uiState.update { 
-                it.copy(
-                    themedIconStyle = style,
-                    themedIconsEnabled = enabled
-                ) 
-            }
-        }
-    }
-
-    fun setThemedIconStyle(style: String) {
-        viewModelScope.launch {
-            themeEngineProxy.setThemedIconStyle(style)
-            _uiState.update { it.copy(themedIconStyle = style) }
-        }
-    }
-
-    fun setThemedIconsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            themeEngineProxy.setThemedIconsEnabled(enabled)
-            _uiState.update { it.copy(themedIconsEnabled = enabled) }
-            
-            if (enabled) {
-                themeEngineProxy.setIconPack("")
-                _uiState.update { it.copy(currentIconPack = null) }
-            }
-        }
-    }
-    
     private fun loadSearchHistory() {
         val historyJson = sharedPrefs.getString(KEY_SEARCH_HISTORY, null)
         if (historyJson != null) {
@@ -858,9 +795,5 @@ data class ThemeStoreUiState(
     val selectedCategory: String? = null,
     val searchQuery: String = "",
     val error: String? = null,
-    val currentUiStyle: String = ThemeEngineProxy.Companion.UiStyle.AXION,
-    val iconPacks: List<IconPack> = emptyList(),
-    val currentIconPack: String? = null,
-    val themedIconStyle: String = ThemeEngineProxy.Companion.ThemedIconStyle.AXION,
-    val themedIconsEnabled: Boolean = false
+    val currentUiStyle: String = ThemeEngineProxy.Companion.UiStyle.AXION
 )

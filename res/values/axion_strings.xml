@@ -55,16 +55,6 @@
     <string name="browse_for_icon_themes">Browse the theme store to install icon themes</string>
     <string name="active">Active</string>
 
-    <string name="app_icon_packs">App Icon Packs</string>
-    <string name="themed_icons">Themed Icons</string>
-    <string name="themed_icons_desc">Monochrome icons that adapt to your wallpaper colors</string>
-    <string name="icon_style">Icon Style</string>
-    <string name="axicons">AxIcons</string>
-    <string name="neutral">Neutral</string>
-    <string name="aosp">AOSP</string>
-    <string name="accent">Accent</string>
-    <string name="default_system_icon_pack">Default system icon pack</string>
-
     <string name="download">Download</string>
     <string name="install">Install</string>
     <string name="apply">Apply</string>

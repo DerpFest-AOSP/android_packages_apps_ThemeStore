@@ -32,11 +32,6 @@ class ThemeEngineProxy(private val context: Context) {
         
         const val SETTINGS_THEME_ENGINE_DATA = "theme_engine_data"
 
-        private val ICON_PACK_CATEGORIES = setOf(
-            "android.theme.customization.icon_pack.android",
-            "android.theme.customization.icon_pack.systemui",
-        )
-        
         object Category {
             const val STATUSBAR_WIFI = "statusbar_wifi"
             const val STATUSBAR_SIGNAL = "statusbar_signal"
@@ -47,8 +42,6 @@ class ThemeEngineProxy(private val context: Context) {
             const val UI_QS = "ui_qs"
             const val UI_VOLUME = "ui_volume"
             const val UI_STYLE = "ui_style"
-            
-            const val ICON_PACK = "icon_pack"
         }
         
         object UiStyle {
@@ -56,14 +49,6 @@ class ThemeEngineProxy(private val context: Context) {
             const val MATERIAL3_EXPRESSIVE = "material3_expressive"
             const val MINIMAL = "minimal"
         }
-        
-        object ThemedIconStyle {
-            const val AXION = "axion"
-            const val AOSP = "aosp"
-        }
-
-        const val THEMED_ICON_STYLE_SETTING = "themed_icon_style"
-        const val THEMED_ICONS_ENABLED_SETTING = "themed_icons"
     }
     
     fun getThemeConfig(): ThemeEngineConfig {
@@ -259,18 +244,6 @@ class ThemeEngineProxy(private val context: Context) {
             ?: UiStyle.AXION
     }
     
-    fun setIconPack(packageName: String): Boolean {
-        return enableTheme(Category.ICON_PACK, packageName)
-    }
-    
-    fun getIconPack(): String? {
-        return getEnabledPackage(Category.ICON_PACK)
-    }
-    
-    fun clearIconPack(): Boolean {
-        return disableTheme(Category.ICON_PACK)
-    }
-    
     fun setIconTheme(packageName: String): Boolean {
         val config = getThemeConfig()
         return saveThemeConfig(config.copy(iconTheme = packageName))
@@ -298,9 +271,6 @@ class ThemeEngineProxy(private val context: Context) {
             iconThemeTargets = allTargets,
             categoryThemes = updatedCategoryThemes
         ))
-        if (saved) {
-            syncOverlayPackagesSettings(updatedCategoryThemes)
-        }
         return saved
     }
     
@@ -319,9 +289,6 @@ class ThemeEngineProxy(private val context: Context) {
             iconThemeTargets = targets,
             categoryThemes = updatedCategoryThemes
         ))
-        if (saved) {
-            syncOverlayPackagesSettings(updatedCategoryThemes)
-        }
         return saved
     }
     
@@ -367,7 +334,6 @@ class ThemeEngineProxy(private val context: Context) {
         ))
         if (saved) {
             setOverlayEnabled(packageName, true, oldPackage)
-            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
         return saved
     }
@@ -391,7 +357,6 @@ class ThemeEngineProxy(private val context: Context) {
             if (oldPackage != null) {
                 setOverlayEnabled(oldPackage, false, null)
             }
-            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
         return saved
     }
@@ -459,70 +424,7 @@ class ThemeEngineProxy(private val context: Context) {
             iconThemeTargets = allTargets,
             categoryThemes = updatedCategoryThemes
         ))
-        if (saved) {
-            syncOverlayPackagesSettings(updatedCategoryThemes)
-        }
         return saved
-    }
-
-    fun setThemedIconStyle(style: String) {
-        Settings.Secure.putString(
-                context.contentResolver,
-                THEMED_ICON_STYLE_SETTING,
-                style
-            )
-    }
-
-    fun getThemedIconStyle(): String {
-        return Settings.Secure.getString(
-                context.contentResolver,
-                THEMED_ICON_STYLE_SETTING
-            ) ?: ThemedIconStyle.AXION
-    }
-
-    fun setThemedIconsEnabled(enabled: Boolean) {
-        Settings.Secure.putInt(
-                context.contentResolver,
-                THEMED_ICONS_ENABLED_SETTING,
-                if (enabled) 1 else 0
-            )
-    }
-
-    fun isThemedIconsEnabled(): Boolean {
-        return Settings.Secure.getInt(
-            context.contentResolver,
-            THEMED_ICONS_ENABLED_SETTING,
-            0
-        ) == 1
-    }
-
-    private fun syncOverlayPackagesSettings(categoryThemes: Map<String, String>) {
-        try {
-            val resolver = context.contentResolver
-            val current = Settings.Secure.getStringForUser(
-                resolver,
-                Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
-                UserHandle.myUserId()
-            )
-            val json = if (current.isNullOrBlank()) JSONObject() else JSONObject(current)
-
-            ICON_PACK_CATEGORIES.forEach { category -> json.remove(category) }
-
-            categoryThemes.forEach { (category, packageName) ->
-                if (category in ICON_PACK_CATEGORIES) {
-                    json.put(category, packageName)
-                }
-            }
-
-            Settings.Secure.putStringForUser(
-                resolver,
-                Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
-                json.toString(),
-                UserHandle.myUserId()
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync overlay packages settings", e)
-        }
     }
 
     private fun getThemeEngine(): ThemeEngine? = ThemeEngine.getInstance(context)

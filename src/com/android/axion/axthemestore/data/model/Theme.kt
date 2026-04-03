@@ -16,8 +16,6 @@
 
 package com.android.axion.axthemestore.data.model
 
-import android.graphics.drawable.Drawable
-
 data class ThemesResponse(
     val version: Int = 0,
     val lastUpdated: String = "",
@@ -126,13 +124,4 @@ object StandardComponents {
     
     const val UI_QS = "ui_qs"
     const val UI_VOLUME = "ui_volume"
-    
-    const val ICON_PACK = "icon_pack"
 }
-
-data class IconPack(
-    val packageName: String,
-    val label: String,
-    val icon: Drawable? = null
-)
-

@@ -53,21 +53,5 @@
         <item>com.android.systemui.wifibar_i|preview_weedwifi</item>
         <item>com.android.systemui.wifibar_c|preview_xperiawifi</item>
         <item>com.android.systemui.wifibar_d|preview_zigzagwifi</item>
-        <item>com.android.theme.icon_pack.acherus.android|preview_iconpack_acherus</item>
-        <item>com.android.theme.icon_pack.aurora.android|preview_iconpack_aurora</item>
-        <item>com.android.theme.icon_pack.circular.android|preview_iconpack_circular</item>
-        <item>com.android.theme.icon_pack.filled.android|preview_iconpack_filled</item>
-        <item>com.android.theme.icon_pack.gradicon.android|preview_iconpack_gradicon</item>
-        <item>com.android.theme.icon_pack.kai.android|preview_iconpack_kai</item>
-        <item>com.android.theme.icon_pack.lorn.android|preview_iconpack_lorn</item>
-        <item>com.android.theme.icon_pack.nostalgic.android|preview_iconpack_nostalgic</item>
-        <item>com.android.theme.icon_pack.oos.android|preview_iconpack_oos</item>
-        <item>com.android.theme.icon_pack.outline.android|preview_iconpack_outline</item>
-        <item>com.android.theme.icon_pack.plumpy.android|preview_iconpack_plumpy</item>
-        <item>com.android.theme.icon_pack.pui.android|preview_iconpack_pui</item>
-        <item>com.android.theme.icon_pack.rounded.android|preview_iconpack_rounded</item>
-        <item>com.android.theme.icon_pack.sam.android|preview_iconpack_sam</item>
-        <item>com.android.theme.icon_pack.victor.android|preview_iconpack_victor</item>
-        <item>com.android.theme.icon_pack.xperia.android|preview_iconpack_xperia</item>
     </string-array>
 </resources>
