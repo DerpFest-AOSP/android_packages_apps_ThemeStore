@@ -56,7 +56,6 @@ import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeInstallState
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
 import com.android.axion.axthemestore.ui.components.ThemeCard
-import com.android.axion.axthemestore.ui.components.ImagePlaceholder
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreUiState
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
@@ -566,6 +565,7 @@ private fun ThemeListItem(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val packageName = theme.overlays.firstOrNull()?.packageName
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -573,7 +573,6 @@ private fun ThemeListItem(
             ) {
                 val isInstalled = installState is ThemeInstallState.Installed || 
                                   installState is ThemeInstallState.InstalledInactive
-                val packageName = theme.overlays.firstOrNull()?.packageName
                 
                 run {
                     val previewResIds = getLocalPreviewResIds(
