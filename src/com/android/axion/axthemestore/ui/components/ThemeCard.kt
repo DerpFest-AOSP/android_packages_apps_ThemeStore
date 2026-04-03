@@ -18,17 +18,14 @@
 
 package com.android.axion.axthemestore.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +39,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.android.axion.axthemestore.R
 import com.android.axion.axthemestore.data.model.Theme
-import com.android.axion.axthemestore.data.model.ThemeInstallState
+import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.data.model.formatFileSize
-import com.android.axion.axthemestore.data.model.hasUpdate
 
 @Composable
 fun ThemeCard(
     theme: Theme,
-    installState: ThemeInstallState,
+    selectionState: ThemeSelectionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,9 +68,8 @@ fun ThemeCard(
             ) {
                 LocalPreviewBox(theme = theme)
                 
-                InstallStateBadge(
-                    state = installState,
-                    theme = theme,
+                SelectionStateBadge(
+                    state = selectionState,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(12.dp)
@@ -139,71 +134,30 @@ fun ThemeCard(
 }
 
 @Composable
-private fun InstallStateBadge(
-    state: ThemeInstallState,
-    theme: Theme,
+private fun SelectionStateBadge(
+    state: ThemeSelectionState,
     modifier: Modifier = Modifier
 ) {
     val (icon, backgroundColor, contentColor) = when (state) {
-        is ThemeInstallState.NotInstalled -> Triple(
-            Icons.Default.Download,
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.onPrimary
-        )
-        is ThemeInstallState.Installed -> {
-            if (theme.hasUpdate(state.installedVersionCode)) {
-                Triple(
-                    Icons.Default.Update,
-                    MaterialTheme.colorScheme.tertiary,
-                    MaterialTheme.colorScheme.onTertiary
-                )
-            } else {
-                Triple(
-                    Icons.Default.Check,
-                    MaterialTheme.colorScheme.primaryContainer,
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-        is ThemeInstallState.InstalledInactive -> {
-            if (theme.hasUpdate(state.installedVersionCode)) {
-                Triple(
-                    Icons.Default.Update,
-                    MaterialTheme.colorScheme.tertiary,
-                    MaterialTheme.colorScheme.onTertiary
-                )
-            } else {
-                Triple(
-                    Icons.Default.Download,
-                    MaterialTheme.colorScheme.secondaryContainer,
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-        }
-        is ThemeInstallState.PartiallyInstalled -> Triple(
-            Icons.Default.Download,
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.onTertiaryContainer
-        )
-        is ThemeInstallState.Downloading -> Triple(
-            null,
+        is ThemeSelectionState.Active -> Triple(
+            Icons.Default.Check,
             MaterialTheme.colorScheme.primaryContainer,
             MaterialTheme.colorScheme.onPrimaryContainer
         )
-        is ThemeInstallState.Installing -> Triple(
-            null,
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.onPrimaryContainer
+        is ThemeSelectionState.Inactive -> Triple(
+            Icons.Default.TouchApp,
+            MaterialTheme.colorScheme.secondaryContainer,
+            MaterialTheme.colorScheme.onSecondaryContainer
         )
-        is ThemeInstallState.Error -> Triple(
-            Icons.Default.Error,
+        is ThemeSelectionState.Missing -> Triple(
+            Icons.Default.Warning,
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer
         )
-        is ThemeInstallState.Downloaded -> Triple(
-            Icons.Default.Download,
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.onTertiaryContainer
+        is ThemeSelectionState.Error -> Triple(
+            Icons.Default.Error,
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer
         )
     }
     
@@ -214,35 +168,12 @@ private fun InstallStateBadge(
             .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        when (state) {
-            is ThemeInstallState.Downloading -> {
-                val animatedProgress by animateFloatAsState(
-                    targetValue = state.progress,
-                    label = "download_progress"
-                )
-                LoadingIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.size(24.dp),
-                    color = contentColor
-                )
-            }
-            is ThemeInstallState.Installing -> {
-                LoadingIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = contentColor
-                )
-            }
-            else -> {
-                icon?.let {
-                    Icon(
-                        imageVector = it,
-                        contentDescription = null,
-                        tint = contentColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
@@ -301,7 +232,7 @@ private fun LocalPreviewBox(theme: Theme) {
             }
         } else {
             Icon(
-                imageVector = Icons.Default.Download,
+                imageVector = Icons.Default.Palette,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant

@@ -32,6 +32,7 @@
 
     <string name="featured">Featured</string>
     <string name="installed">Installed</string>
+    <string name="section_currently_applied">Currently applied</string>
     <string name="themes">Themes</string>
     <string name="search_themes">Search themes</string>
     <string name="recent_searches">Recent searches</string>
@@ -47,30 +48,23 @@
     <string name="check_back_later">Check back later for new themes</string>
     <string name="retry">Retry</string>
 
-    <string name="installed_components">Installed Components</string>
+    <string name="installed_components">Active overlays</string>
     <string name="active_theme_components">Active Theme Components</string>
     <string name="active_theme_components_desc">View all components currently applied to your system</string>
     <string name="ui_style">UI Style</string>
     <string name="icon_theme_components">Icon Theme Components</string>
-    <string name="no_icon_themes_installed">No Icon Themes Installed</string>
-    <string name="browse_for_icon_themes">Browse the theme store to install icon themes</string>
+    <string name="no_icon_themes_installed">Nothing applied yet</string>
+    <string name="browse_for_icon_themes">Apply a Wi\u2011Fi or signal icon pack from the main list</string>
     <string name="active">Active</string>
 
-    <string name="download">Download</string>
-    <string name="install">Install</string>
     <string name="apply">Apply</string>
     <string name="apply_changes">Apply Changes</string>
     <string name="disable">Disable</string>
-    <string name="uninstall">Uninstall</string>
-    <string name="resume_installation">Resume Installation</string>
-    <string name="downloading">Downloading %s\u2026</string>
-    <string name="installing">Installing\u2026</string>
-    <string name="update_to">Update to v%s</string>
+    <string name="overlay_package_missing">This overlay is not on this build</string>
     <string name="pending_changes">Pending changes</string>
     <string name="components">Components</string>
     <string name="tags">Tags</string>
     <string name="error_prefix">Error: %s</string>
-    <string name="components_installed">%1$d of %2$d components installed</string>
 
     <string name="back">Back</string>
     <string name="search">Search</string>

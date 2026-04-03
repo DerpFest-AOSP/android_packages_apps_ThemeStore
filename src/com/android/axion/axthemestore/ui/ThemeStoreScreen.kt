@@ -53,7 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
-import com.android.axion.axthemestore.data.model.ThemeInstallState
+import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
 import com.android.axion.axthemestore.ui.components.ThemeCard
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
@@ -186,7 +186,7 @@ fun CategoryThemesScreen(
                         items(categoryThemes, key = { it.id }) { theme ->
                             ThemeCard(
                                 theme = theme,
-                                installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
+                                selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
                                 onClick = { onThemeClick(theme) }
                             )
                         }
@@ -205,7 +205,7 @@ private fun SearchScreen(
     onSearchChange: (String) -> Unit,
     onBack: () -> Unit,
     themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
+    themeStates: Map<String, ThemeSelectionState>,
     onThemeClick: (Theme) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -276,7 +276,7 @@ private fun SearchScreen(
                 items(themes, key = { it.id }) { theme ->
                     ThemeListItem(
                         theme = theme,
-                        installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
+                        selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
                         onClick = { onThemeClick(theme) }
                     )
                 }
@@ -379,7 +379,7 @@ private fun SearchScreen(
 @Composable
 private fun BrowseScreen(
     uiState: ThemeStoreUiState,
-    themeStates: Map<String, ThemeInstallState>,
+    themeStates: Map<String, ThemeSelectionState>,
     onSearchClick: () -> Unit,
     onRefresh: () -> Unit,
     onThemeClick: (Theme) -> Unit,
@@ -442,11 +442,8 @@ private fun BrowseScreen(
                 } else {
                     val themesByCategory = uiState.themes.groupBy { it.category }
                     
-                    val installedThemes = uiState.themes.filter { theme ->
-                        val state = themeStates[theme.id]
-                        state is ThemeInstallState.Installed || 
-                        state is ThemeInstallState.InstalledInactive ||
-                        theme.isLocal
+                    val appliedThemes = uiState.themes.filter { theme ->
+                        themeStates[theme.id] is ThemeSelectionState.Active
                     }
                     
                     LazyColumn(
@@ -457,18 +454,17 @@ private fun BrowseScreen(
                             item {
                                 FeaturedCarousel(
                                     themes = featuredThemes,
-                                    themeStates = themeStates,
                                     onThemeClick = onThemeClick
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
                         
-                        if (installedThemes.isNotEmpty()) {
+                        if (appliedThemes.isNotEmpty()) {
                             item {
                                 ThemeSection(
-                                    title = stringResource(R.string.installed),
-                                    themes = installedThemes,
+                                    title = stringResource(R.string.section_currently_applied),
+                                    themes = appliedThemes,
                                     themeStates = themeStates,
                                     onThemeClick = onThemeClick
                                 )
@@ -499,7 +495,7 @@ private fun BrowseScreen(
 private fun ThemeSection(
     title: String,
     themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
+    themeStates: Map<String, ThemeSelectionState>,
     onThemeClick: (Theme) -> Unit
 ) {
     Column(
@@ -536,7 +532,7 @@ private fun ThemeSection(
                     chunk.forEach { theme ->
                         ThemeListItem(
                             theme = theme,
-                            installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
+                            selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
                             onClick = { onThemeClick(theme) }
                         )
                     }
@@ -549,7 +545,7 @@ private fun ThemeSection(
 @Composable
 private fun ThemeListItem(
     theme: Theme,
-    installState: ThemeInstallState,
+    selectionState: ThemeSelectionState,
     onClick: () -> Unit
 ) {
     Surface(
@@ -571,8 +567,8 @@ private fun ThemeListItem(
                     .size(56.dp)
                     .clip(MaterialTheme.shapes.small)
             ) {
-                val isInstalled = installState is ThemeInstallState.Installed || 
-                                  installState is ThemeInstallState.InstalledInactive
+                val onDevice = selectionState is ThemeSelectionState.Active ||
+                    selectionState is ThemeSelectionState.Inactive
                 
                 run {
                     val previewResIds = getLocalPreviewResIds(
@@ -592,7 +588,7 @@ private fun ThemeListItem(
                                     MaterialTheme.colorScheme.onSurface)
                             )
                         }
-                    } else if (isInstalled && packageName != null) {
+                    } else if (onDevice && packageName != null) {
                         ThemePackagePreview(
                             packageName = packageName,
                             modifier = Modifier.fillMaxSize(),
@@ -643,9 +639,9 @@ private fun ThemeListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                val stateText = when (installState) {
-                    is ThemeInstallState.Installed -> "Active"
-                    is ThemeInstallState.InstalledInactive -> "Installed"
+                val stateText = when (selectionState) {
+                    is ThemeSelectionState.Active -> stringResource(R.string.active)
+                    is ThemeSelectionState.Inactive -> stringResource(R.string.theme_not_applied)
                     else -> null
                 }
                 stateText?.let {
@@ -680,7 +676,7 @@ private fun ThemeListItem(
 @Composable
 private fun CompactThemeCard(
     theme: Theme,
-    installState: ThemeInstallState,
+    selectionState: ThemeSelectionState,
     onClick: () -> Unit
 ) {
     Card(
@@ -699,8 +695,8 @@ private fun CompactThemeCard(
                     .height(100.dp)
                     .clip(MaterialTheme.shapes.medium)
             ) {
-                val isInstalled = installState is ThemeInstallState.Installed || 
-                                  installState is ThemeInstallState.InstalledInactive
+                val onDevice = selectionState is ThemeSelectionState.Active ||
+                    selectionState is ThemeSelectionState.Inactive
                 val packageName = theme.overlays.firstOrNull()?.packageName
                 val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
                 
@@ -719,7 +715,7 @@ private fun CompactThemeCard(
                             )
                         }
                     }
-                    isInstalled && packageName != null -> {
+                    onDevice && packageName != null -> {
                         ThemePackagePreview(
                             packageName = packageName,
                             modifier = Modifier.fillMaxSize()
@@ -749,9 +745,10 @@ private fun CompactThemeCard(
                     }
                 }
                 
-                val stateColor = when (installState) {
-                    is ThemeInstallState.Installed -> MaterialTheme.colorScheme.primary
-                    is ThemeInstallState.InstalledInactive -> MaterialTheme.colorScheme.secondary
+                val stateColor = when (selectionState) {
+                    is ThemeSelectionState.Active -> MaterialTheme.colorScheme.primary
+                    is ThemeSelectionState.Inactive -> MaterialTheme.colorScheme.secondary
+                    is ThemeSelectionState.Missing -> MaterialTheme.colorScheme.error
                     else -> null
                 }
                 stateColor?.let { color ->
@@ -790,7 +787,6 @@ private fun CompactThemeCard(
 @Composable
 private fun FeaturedCarousel(
     themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
     onThemeClick: (Theme) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { themes.size })
@@ -813,8 +809,7 @@ private fun FeaturedCarousel(
         ) { page ->
             val theme = themes[page]
             FeaturedThemeCard(
-                theme = theme, 
-                installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
+                theme = theme,
                 onClick = { onThemeClick(theme) }
             )
         }
@@ -824,7 +819,6 @@ private fun FeaturedCarousel(
 @Composable
 private fun FeaturedThemeCard(
     theme: Theme,
-    installState: ThemeInstallState,
     onClick: () -> Unit
 ) {
     val containerColor = MaterialTheme.colorScheme.primaryContainer
