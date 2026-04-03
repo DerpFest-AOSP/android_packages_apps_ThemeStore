@@ -36,7 +36,9 @@ data class Theme(
     val category: String = "",
     val tags: List<String> = emptyList(),
     val overlays: List<ThemeOverlay> = emptyList(),
-    val isUnified: Boolean = false
+    val isUnified: Boolean = false,
+    /** Preinstalled RRO on system image — no download; uninstall only clears selection. */
+    val isBundledOverlay: Boolean = false
 ) {
     val totalFileSize: Long
         get() = overlays.sumOf { it.fileSize }

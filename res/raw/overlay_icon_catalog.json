@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "generatedNote": "Regenerate with tools/generate_overlay_icon_catalog.py",
+  "entries": [
+    {
+      "package": "com.android.systemui.wifibar_l",
+      "label": "Acherus",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsWifiG",
+      "label": "Acherus G",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsWifiT",
+      "label": "Acherus T",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_h",
+      "label": "Bars",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_j",
+      "label": "Dora",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.wifiGradicon",
+      "label": "Gradicon",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_g",
+      "label": "Inside",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.LivWifi",
+      "label": "Liv",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.custom.systemui.wifiNothingDot",
+      "label": "NothingDoT",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.wifibar_m",
+      "label": "Pavlova UI",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_f",
+      "label": "Round",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_b",
+      "label": "Sneaky",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_a",
+      "label": "Stroke",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_e",
+      "label": "Wavy",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_i",
+      "label": "Weed",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_c",
+      "label": "Xperia",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_d",
+      "label": "Zig-Zag",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_l",
+      "label": "Acherus",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsSignalG",
+      "label": "Acherus G",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsSignalT",
+      "label": "Acherus T",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_h",
+      "label": "Bars",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.signalGradicon",
+      "label": "Gradicon",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_g",
+      "label": "Inside",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_ios",
+      "label": "Ios",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.LivSignal",
+      "label": "Liv",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.systemui.signalNothingDot",
+      "label": "NothingDoT",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_odinee",
+      "label": "Odinee",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_m",
+      "label": "Pavlova UI",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_f",
+      "label": "Round",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_b",
+      "label": "Sneaky",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_a",
+      "label": "Stroke",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_wanna",
+      "label": "Wanna",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_e",
+      "label": "Wavy",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_windows",
+      "label": "Windows",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_c",
+      "label": "Xperia",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_d",
+      "label": "Zig-Zag",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    }
+  ]
+}

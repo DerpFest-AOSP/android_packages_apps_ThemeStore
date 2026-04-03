@@ -55,7 +55,6 @@ import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeInstallState
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
-import com.android.axion.axthemestore.ui.components.AsyncNetworkImage
 import com.android.axion.axthemestore.ui.components.ThemeCard
 import com.android.axion.axthemestore.ui.components.ImagePlaceholder
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
@@ -659,17 +658,19 @@ private fun ThemeListItem(
                 }
             }
             
-            if (theme.previewImages.size > 1) {
+            val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
+            if (sidePreviewIds.size > 1) {
                 Box(
                     modifier = Modifier
                         .size(width = 48.dp, height = 80.dp)
                         .clip(MaterialTheme.shapes.extraSmall)
                 ) {
-                    AsyncNetworkImage(
-                        url = theme.previewImages[1],
+                    Image(
+                        painter = painterResource(sidePreviewIds[1]),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
                     )
                 }
             }
@@ -702,25 +703,22 @@ private fun CompactThemeCard(
                 val isInstalled = installState is ThemeInstallState.Installed || 
                                   installState is ThemeInstallState.InstalledInactive
                 val packageName = theme.overlays.firstOrNull()?.packageName
+                val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
                 
                 when {
-                    theme.previewImages.isNotEmpty() -> {
-                        AsyncNetworkImage(
-                            url = theme.previewImages.first(),
-                            contentDescription = theme.name,
-                            contentScale = ContentScale.Crop,
+                    compactPreviewIds.isNotEmpty() -> {
+                        Box(
                             modifier = Modifier.fillMaxSize(),
-                            errorContent = {
-                                if (isInstalled && packageName != null) {
-                                    ThemePackagePreview(
-                                        packageName = packageName,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    ImagePlaceholder(modifier = Modifier.fillMaxSize())
-                                }
-                            }
-                        )
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(compactPreviewIds.first()),
+                                contentDescription = theme.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                            )
+                        }
                     }
                     isInstalled && packageName != null -> {
                         ThemePackagePreview(

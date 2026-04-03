@@ -16,7 +16,6 @@
 
 package com.android.axion.axthemestore.ui
 
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -52,19 +51,18 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.repository.ThemeRepository
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
 private const val CATEGORY_SIGNAL = "android.theme.customization.signal_icon"
@@ -91,8 +89,8 @@ fun SystemThemePackagesScreen(
         stringResource(R.string.system_themes_title)
     )
 
-    var signalPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
-    var wifiPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val categoryThemes by viewModel.categoryThemesState.collectAsStateWithLifecycle()
 
     val previewMap = remember {
         val map = mutableMapOf<String, String>()
@@ -106,41 +104,43 @@ fun SystemThemePackagesScreen(
         map
     }
 
-    fun refreshPacks() {
-        val proxy = viewModel.getThemeEngineProxy()
-        val pm = context.packageManager
+    val pm = context.packageManager
+    val activeSignal = categoryThemes[CATEGORY_SIGNAL]
+    val activeWifi = categoryThemes[CATEGORY_WIFI]
 
-        val activeSignal = proxy.getCategoryTheme(CATEGORY_SIGNAL)
-        val activeWifi = proxy.getCategoryTheme(CATEGORY_WIFI)
-
-        signalPacks = proxy.getAvailableOverlays(CATEGORY_SIGNAL).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeSignal,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
+    val signalPacks = uiState.themes
+        .filter { it.category == ThemeRepository.ID_CATEGORY_SIGNAL }
+        .map { theme ->
+            val pkg = theme.overlays.first().packageName
+            OverlayPackItem(
+                packageName = pkg,
+                label = theme.name,
+                isActive = pkg == activeSignal,
+                icon = try {
+                    pm.getApplicationIcon(pm.getApplicationInfo(pkg, 0))
+                } catch (_: Exception) {
+                    null
+                },
+                previewResPrefix = previewMap[pkg] ?: ""
+            )
         }
 
-        wifiPacks = proxy.getAvailableOverlays(CATEGORY_WIFI).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeWifi,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
+    val wifiPacks = uiState.themes
+        .filter { it.category == ThemeRepository.ID_CATEGORY_WIFI }
+        .map { theme ->
+            val pkg = theme.overlays.first().packageName
+            OverlayPackItem(
+                packageName = pkg,
+                label = theme.name,
+                isActive = pkg == activeWifi,
+                icon = try {
+                    pm.getApplicationIcon(pm.getApplicationInfo(pkg, 0))
+                } catch (_: Exception) {
+                    null
+                },
+                previewResPrefix = previewMap[pkg] ?: ""
+            )
         }
-    }
-
-    LaunchedEffect(Unit) { refreshPacks() }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -180,20 +180,14 @@ fun SystemThemePackagesScreen(
                             onApply = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.setCategoryTheme(category, item.packageName)
-                                proxy.setIconThemeWithTargets(
-                                    item.packageName,
-                                    proxy.getIconThemeTargets() + listOf(
-                                        if (selectedTab == 0) "signal" else "wifi"
-                                    )
-                                )
                                 proxy.notifyThemeChanged()
-                                refreshPacks()
+                                viewModel.checkInstallStates()
                             },
                             onDisable = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.clearCategoryTheme(category)
                                 proxy.notifyThemeChanged()
-                                refreshPacks()
+                                viewModel.checkInstallStates()
                             }
                         )
                     }

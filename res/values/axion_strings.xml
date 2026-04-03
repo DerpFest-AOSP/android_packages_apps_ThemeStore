@@ -16,6 +16,7 @@
     <string name="section_signal_icons">Cellular Signal Icons</string>
     <string name="wifi_icons_desc">Replace the 5 Wi-Fi signal strength indicators shown in the status bar</string>
     <string name="signal_icons_desc">Replace the 5 cellular signal strength indicators shown in the status bar</string>
+    <string name="bundled_overlay_author">System</string>
     <string name="current_icons_label">CURRENT</string>
     <string name="your_icons_label">YOUR REPLACEMENTS</string>
     <string name="import_drawable">Import</string>

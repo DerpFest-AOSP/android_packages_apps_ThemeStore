@@ -26,9 +26,7 @@ import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeInstallState
 import com.android.axion.axthemestore.data.model.ThemeOverlay
 import com.android.axion.axthemestore.data.repository.ThemeRepository
-import com.android.axion.axthemestore.download.ThemeDownloadManager
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
-import com.android.axion.axthemestore.install.ThemeInstaller
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.*
 
@@ -42,8 +40,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     }
     
     private val repository = ThemeRepository(application)
-    private val downloadManager = ThemeDownloadManager(application)
-    private val installer = ThemeInstaller(application)
     private val themeEngineProxy = ThemeEngineProxy(application)
     private val sharedPrefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     
@@ -102,49 +98,15 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
             
             repository.fetchThemes(forceRefresh).fold(
                 onSuccess = { response ->
-                    val storePackages = response.themes
-                        .flatMap { it.overlays }
-                        .map { it.packageName }
-                        .toSet()
-                    
-                    val thirdPartyThemes = repository.getInstalledThirdPartyThemes(storePackages)
-                    
-                    val allThemes = response.themes + thirdPartyThemes
-                    
-                    val baseCategories = response.categories
-                    
-                    val hasLocalIconThemes = thirdPartyThemes.any { it.category == "icon_themes" }
-                    val hasIconThemeCategory = baseCategories.any { it.id == "icon_themes" }
-                    
-                    val categoriesWithIconThemes = if (hasLocalIconThemes && !hasIconThemeCategory) {
-                        baseCategories + ThemeCategory(
-                            id = "icon_themes",
-                            name = "Icon Packs",
-                            icon = "extensions"
-                        )
-                    } else {
-                        baseCategories
-                    }
-
-                    val categories = if (thirdPartyThemes.isNotEmpty()) {
-                        categoriesWithIconThemes + ThemeCategory(
-                            id = "local",
-                            name = "Installed",
-                            icon = "category"
-                        )
-                    } else {
-                        categoriesWithIconThemes
-                    }
-                    
                     _uiState.update { state ->
                         state.copy(
                             isLoading = false,
-                            themes = allThemes,
-                            categories = categories,
+                            themes = response.themes,
+                            categories = response.categories,
                             error = null
                         )
                     }
-                    updateInstallStates(allThemes)
+                    updateInstallStates(response.themes)
                     
                     refreshComponentStates()
                 },
@@ -273,192 +235,19 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     }
     
     fun downloadTheme(theme: Theme) {
-        if (theme.isUiStyle) {
-            return
-        }
-        
-        if (theme.overlays.isEmpty()) {
-            _themeStates.update { 
-                it + (theme.id to ThemeInstallState.Error("No overlays available")) 
-            }
-            return
-        }
-        
-        viewModelScope.launch {
-            val overlaysToDownload = if (theme.isUnified) {
-                listOf(theme.overlays.first())
-            } else {
-                theme.overlays.filter { it.enabled }
-            }
-            
-            val downloadedFiles = mutableMapOf<String, java.io.File>()
-            
-            for ((index, overlay) in overlaysToDownload.withIndex()) {
-                val progress = index.toFloat() / overlaysToDownload.size
-                _themeStates.update { 
-                    it + (theme.id to ThemeInstallState.Downloading(progress, overlay.componentId)) 
-                }
-                
-                val file = downloadOverlay(theme.id, overlay)
-                if (file == null) {
-                    _themeStates.update { 
-                        it + (theme.id to ThemeInstallState.Error("Failed to download ${overlay.componentId}")) 
-                    }
-                    return@launch
-                }
-                downloadedFiles[overlay.componentId] = file
-            }
-            
-            _themeStates.update { 
-                it + (theme.id to ThemeInstallState.Downloaded(downloadedFiles)) 
-            }
-            Log.d(TAG, "Successfully downloaded theme ${theme.name}")
+        if (theme.isBundledOverlay || theme.isUiStyle) return
+        _themeStates.update {
+            it + (theme.id to ThemeInstallState.Error("Download is not available (offline catalog)."))
         }
     }
 
     fun installTheme(theme: Theme) {
-        if (theme.isUiStyle) {
-             return
-        }
-
-        val currentState = _themeStates.value[theme.id]
-        if (currentState !is ThemeInstallState.Downloaded) {
-            _themeStates.update { 
-                it + (theme.id to ThemeInstallState.Error("Theme files not found. Please download again.")) 
-            }
-            return
-        }
-
-        val filesToInstall = currentState.files
-        
-        viewModelScope.launch {
-            _themeStates.update { it + (theme.id to ThemeInstallState.Installing) }
-            
-            var installedCount = 0
-            val overlays = if (theme.isUnified) {
-                listOf(theme.overlays.first())
-            } else {
-                 theme.overlays.filter { it.enabled }
-            }
-            
-            for (overlay in overlays) {
-                val apkFile = filesToInstall[overlay.componentId]
-                if (apkFile == null || !apkFile.exists()) {
-                     _themeStates.update { 
-                        it + (theme.id to ThemeInstallState.Error("File missing for ${overlay.componentId}")) 
-                    }
-                    return@launch
-                }
-                
-                val installSuccess = installOverlay(overlay.packageName, apkFile)
-                if (!installSuccess) {
-                     _themeStates.update { 
-                        it + (theme.id to ThemeInstallState.Error("Failed to install ${overlay.componentId}")) 
-                    }
-                    return@launch
-                }
-                
-                apkFile.delete()
-                installedCount++
-            }
-            
-            if (theme.isUnified && theme.overlays.isNotEmpty()) {
-                val packageName = theme.overlays.first().packageName
-                val actualTargets = readTargetsFromInstalledApk(packageName)
-                
-                if (actualTargets.isNotEmpty()) {
-                    val updatedOverlays = theme.overlays.map { overlay ->
-                        overlay.copy(targets = actualTargets)
-                    }
-                    
-                    _uiState.update { state ->
-                        val updatedThemes = state.themes.map { t ->
-                            if (t.id == theme.id) {
-                                t.copy(overlays = updatedOverlays)
-                            } else t
-                        }
-                        state.copy(themes = updatedThemes)
-                    }
-                    
-                    Log.d(TAG, "Updated ${theme.name} targets from APK: $actualTargets")
-                }
-            }
-            
-            val installedVersion = theme.versionCode
-            _themeStates.update { 
-                it + (theme.id to ThemeInstallState.InstalledInactive(installedVersion)) 
-            }
-            
-            checkInstallStates()
-            Log.d(TAG, "Successfully installed theme ${theme.name} - Ready to apply")
+        if (theme.isBundledOverlay || theme.isUiStyle) return
+        _themeStates.update {
+            it + (theme.id to ThemeInstallState.Error("Install is not available (offline catalog)."))
         }
     }
 
-    private fun readTargetsFromInstalledApk(packageName: String): List<String> {
-        val targets = mutableListOf<String>()
-        
-        try {
-            val pm = getApplication<Application>().packageManager
-            val resources = pm.getResourcesForApplication(packageName)
-            
-            val arrayToCategoryMap = mapOf(
-                "target_android" to "android",
-                "target_systemui" to "systemui",
-                "target_wifi" to "wifi",
-                "target_signal" to "signal"
-            )
-            
-            arrayToCategoryMap.forEach { (arrayName, category) ->
-                try {
-                    val resId = resources.getIdentifier(arrayName, "array", packageName)
-                    if (resId != 0) {
-                        val array = resources.getStringArray(resId)
-                        if (array.isNotEmpty()) {
-                            targets.add(category)
-                        }
-                    }
-                } catch (e: Exception) {
-                }
-            }
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to read targets from $packageName", e)
-        }
-    
-        val targetOrder = listOf("android", "systemui", "wifi", "signal")
-        return targetOrder.filter { it in targets }
-    }
-
-    private suspend fun downloadOverlay(themeId: String, overlay: ThemeOverlay): java.io.File? {
-        var resultFile: java.io.File? = null
-        
-        downloadManager.downloadTheme(
-            "${themeId}_${overlay.componentId}", 
-            overlay.downloadUrl
-        ).collect { state ->
-            when (state) {
-                is ThemeDownloadManager.DownloadState.Success -> {
-                    resultFile = state.file
-                }
-                is ThemeDownloadManager.DownloadState.Error -> {
-                    Log.e(TAG, "Download failed for ${overlay.componentId}", state.exception)
-                }
-                else -> {}
-            }
-        }
-        
-        return resultFile
-    }
-        
-    private suspend fun installOverlay(packageName: String, apkFile: java.io.File): Boolean {
-        var success = false
-        
-        installer.installTheme(apkFile, packageName).collect { result ->
-            success = result is ThemeInstaller.InstallResult.Success
-        }
-        
-        return success
-    }
         
     fun disableTheme(theme: Theme) {
         viewModelScope.launch {
@@ -487,16 +276,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
                 theme.overlays
             }
 
-            for (overlay in overlaysToUninstall) {
-                if (repository.isThemeInstalled(overlay.packageName)) {
-                    installer.uninstallTheme(overlay.packageName).collect { result ->
-                        if (result is ThemeInstaller.InstallResult.Failure) {
-                            Log.e(TAG, "Failed to uninstall ${overlay.componentId}")
-                        }
-                    }
-                }
-            }
-            
             if (theme.isUnified) {
                 val packageName = theme.overlays.first().packageName
                 themeEngineProxy.clearIconTheme()

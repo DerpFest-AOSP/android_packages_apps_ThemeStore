@@ -429,16 +429,6 @@ class ThemeEngineProxy(private val context: Context) {
 
     private fun getThemeEngine(): ThemeEngine? = ThemeEngine.getInstance(context)
 
-    fun getAvailableOverlays(category: String): List<String> {
-        val engine = getThemeEngine() ?: return emptyList()
-        return try {
-            engine.getAvailableOverlays(category) ?: emptyList()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get available overlays", e)
-            emptyList()
-        }
-    }
-
     fun notifyThemeChanged() {
         val engine = getThemeEngine() ?: return
         try {

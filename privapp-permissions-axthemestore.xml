@@ -16,11 +16,7 @@
 -->
 <permissions>
     <privapp-permissions package="com.android.axion.axthemestore">
-        <permission name="android.permission.INTERNET" />
-        <permission name="android.permission.ACCESS_NETWORK_STATE" />
-        <permission name="android.permission.INSTALL_PACKAGES" />
-        <permission name="android.permission.DELETE_PACKAGES" />
-        <permission name="android.permission.REQUEST_INSTALL_PACKAGES" />
+        <!-- Needed to resolve overlay packages and load preview drawables from them. -->
         <permission name="android.permission.QUERY_ALL_PACKAGES" />
     </privapp-permissions>
 </permissions>

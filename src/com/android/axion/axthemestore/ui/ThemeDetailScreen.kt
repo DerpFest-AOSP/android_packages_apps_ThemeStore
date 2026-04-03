@@ -52,7 +52,6 @@ import com.android.axion.axthemestore.data.model.ThemeInstallState
 import com.android.axion.axthemestore.data.model.ThemeOverlay
 import com.android.axion.axthemestore.data.model.formatFileSize
 import com.android.axion.axthemestore.data.model.hasUpdate
-import com.android.axion.axthemestore.ui.components.AsyncNetworkImage
 import com.android.axion.axthemestore.ui.components.ImagePlaceholder
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
@@ -364,6 +363,8 @@ private fun UnifiedComponentItem(
 
 private fun getComponentDisplayName(componentId: String): String {
     return when (componentId) {
+        "android.theme.customization.wifi_icon" -> "Wi‑Fi icons"
+        "android.theme.customization.signal_icon" -> "Signal icons"
         "statusbar_wifi", "wifi" -> "WiFi Icons"
         "statusbar_signal", "signal" -> "Signal Icons"
         "android" -> "Android Framework"
@@ -377,6 +378,8 @@ private fun getComponentDisplayName(componentId: String): String {
 
 private fun getComponentDescription(componentId: String): String {
     return when (componentId) {
+        "android.theme.customization.wifi_icon" -> "Wi‑Fi strength indicators in the status bar"
+        "android.theme.customization.signal_icon" -> "Cellular signal indicators in the status bar"
         "statusbar_wifi", "wifi" -> "WiFi signal indicators in status bar"
         "statusbar_signal", "signal" -> "Mobile network indicators in status bar"
         "android" -> "Core Android framework icons"
