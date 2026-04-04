@@ -181,13 +181,13 @@ fun SystemThemePackagesScreen(
                             onApply = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.setCategoryTheme(category, item.packageName)
-                                proxy.notifyThemeChanged()
+                                proxy.notifyThemeChangedAfterOverlayChange()
                                 viewModel.checkInstallStates()
                             },
                             onDisable = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.clearCategoryTheme(category)
-                                proxy.notifyThemeChanged()
+                                proxy.notifyThemeChangedAfterOverlayChange()
                                 viewModel.checkInstallStates()
                             }
                         )

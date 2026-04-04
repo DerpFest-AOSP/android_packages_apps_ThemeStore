@@ -20,16 +20,21 @@ import android.content.Context
 import android.content.om.OverlayManager
 import android.content.om.OverlayManagerTransaction
 import android.content.res.ThemeEngine
+import android.os.Handler
+import android.os.Looper
 import android.os.UserHandle
 import android.provider.Settings
 import android.util.Log
+import android.view.Choreographer
 import org.json.JSONObject
 
 class ThemeEngineProxy(private val context: Context) {
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     companion object {
         private const val TAG = "ThemeEngineProxy"
-        
+
         const val SETTINGS_THEME_ENGINE_DATA = "theme_engine_data"
 
         object Category {
@@ -543,7 +548,7 @@ class ThemeEngineProxy(private val context: Context) {
             themes = themes
         ))
         if (saved) {
-            notifyThemeChanged()
+            notifyThemeChangedAfterOverlayChange()
         }
         return saved
     }
@@ -551,11 +556,35 @@ class ThemeEngineProxy(private val context: Context) {
     private fun getThemeEngine(): ThemeEngine? = ThemeEngine.getInstance(context)
 
     fun notifyThemeChanged() {
+        try {
+            context.contentResolver.notifyChange(
+                Settings.Secure.getUriFor(SETTINGS_THEME_ENGINE_DATA),
+                null
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to notify theme settings observers", e)
+        }
         val engine = getThemeEngine() ?: return
         try {
             engine.notifyThemeChanged(null)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to notify theme changed", e)
+        }
+    }
+
+    /**
+     * Pushes theme updates immediately, then again after the current message pass and after the
+     * next frame so SystemUI can apply overlay dimensions before the next signal/Wi‑Fi tick.
+     */
+    fun notifyThemeChangedAfterOverlayChange() {
+        notifyThemeChanged()
+        mainHandler.post {
+            notifyThemeChanged()
+            Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+                override fun doFrame(frameTimeNs: Long) {
+                    notifyThemeChanged()
+                }
+            })
         }
     }
 }

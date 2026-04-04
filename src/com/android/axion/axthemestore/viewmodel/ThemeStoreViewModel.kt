@@ -226,11 +226,12 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
                 val packageName = theme.overlays.first().packageName
                 themeEngineProxy.clearIconTheme()
                 themeEngineProxy.clearCategoryThemesForPackage(packageName)
+                themeEngineProxy.notifyThemeChangedAfterOverlayChange()
             } else {
                 for (overlay in theme.overlays) {
                     themeEngineProxy.clearCategoryTheme(overlay.componentId)
                 }
-                themeEngineProxy.notifyThemeChanged()
+                themeEngineProxy.notifyThemeChangedAfterOverlayChange()
             }
 
             refreshComponentStates()
@@ -296,7 +297,7 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
                     }
                 }
                 if (success) {
-                    themeEngineProxy.notifyThemeChanged()
+                    themeEngineProxy.notifyThemeChangedAfterOverlayChange()
                     refreshComponentStates()
                     updateSelectionStates(_uiState.value.themes)
                     Log.d(TAG, "Applied overlay theme: ${theme.name}")
@@ -422,6 +423,7 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     fun clearCategoryTheme(category: String) {
         viewModelScope.launch {
             themeEngineProxy.clearCategoryTheme(category)
+            themeEngineProxy.notifyThemeChangedAfterOverlayChange()
             refreshComponentStates()
             updateSelectionStates(_uiState.value.themes)
         }
