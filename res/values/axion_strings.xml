@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Themes</string>
+    <string name="app_name">Network icons</string>
 
 <string name="system_themes_title">System Themes</string>
     <string name="system_icons_title">System Icons</string>
@@ -34,7 +34,7 @@
 
     <string name="installed">Installed</string>
     <string name="section_currently_applied">Currently applied</string>
-    <string name="themes">Themes</string>
+    <string name="themes">Network icons</string>
     <string name="search_themes">Search themes</string>
     <string name="recent_searches">Recent searches</string>
     <string name="no_recent_searches">No recent searches</string>
