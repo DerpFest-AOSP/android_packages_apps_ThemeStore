@@ -387,41 +387,52 @@ private fun BrowseScreen(
     onNavigateToInstalledComponents: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Row(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = MaterialTheme.shapes.large,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Text(
-                text = stringResource(R.string.themes),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            IconButton(onClick = onNavigateToInstalledComponents) {
-                Icon(
-                    imageVector = Icons.Default.Layers,
-                    contentDescription = stringResource(R.string.installed_components)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.themes),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-            }
-            
-            IconButton(onClick = onSearchClick) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.search)
-                )
-            }
-            
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.refresh)
-                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                IconButton(onClick = onNavigateToInstalledComponents) {
+                    Icon(
+                        imageVector = Icons.Default.Layers,
+                        contentDescription = stringResource(R.string.installed_components)
+                    )
+                }
+
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(R.string.search)
+                    )
+                }
+
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = stringResource(R.string.refresh)
+                    )
+                }
             }
         }
         
@@ -486,43 +497,52 @@ private fun ThemeSection(
     themeStates: Map<String, ThemeSelectionState>,
     onThemeClick: (Theme) -> Unit
 ) {
-    Column(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp)
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        
-        val chunkedThemes = themes.chunked(3)
-        
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(chunkedThemes.size) { chunkIndex ->
-                val chunk = chunkedThemes[chunkIndex]
-                Column(
-                    modifier = Modifier.width(280.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    chunk.forEach { theme ->
-                        ThemeListItem(
-                            theme = theme,
-                            selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
-                            onClick = { onThemeClick(theme) }
-                        )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            val chunkedThemes = themes.chunked(3)
+
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(chunkedThemes.size) { chunkIndex ->
+                    val chunk = chunkedThemes[chunkIndex]
+                    Column(
+                        modifier = Modifier.width(280.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        chunk.forEach { theme ->
+                            ThemeListItem(
+                                theme = theme,
+                                selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
+                                onClick = { onThemeClick(theme) },
+                                homepageStyle = true
+                            )
+                        }
                     }
                 }
             }
@@ -534,13 +554,23 @@ private fun ThemeSection(
 private fun ThemeListItem(
     theme: Theme,
     selectionState: ThemeSelectionState,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    homepageStyle: Boolean = false
 ) {
+    val shapeFill = MaterialTheme.colorScheme.surfaceContainerHigh
+    val vectorTint = if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurface
+    val paletteTint =
+        if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val sidePreviewTint = if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurface
+
     Surface(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(
+                horizontal = if (homepageStyle) 0.dp else 16.dp,
+                vertical = 4.dp
+            ),
         color = Color.Transparent
     ) {
         Row(
@@ -557,7 +587,7 @@ private fun ThemeListItem(
             ) {
                 val onDevice = selectionState is ThemeSelectionState.Active ||
                     selectionState is ThemeSelectionState.Inactive
-                
+
                 run {
                     val previewResIds = getLocalPreviewResIds(
                         LocalContext.current, packageName ?: "")
@@ -565,43 +595,56 @@ private fun ThemeListItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
                                 painter = painterResource(previewResIds.first()),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp),
-                                colorFilter = ColorFilter.tint(
-                                    MaterialTheme.colorScheme.onSurface)
+                                colorFilter = ColorFilter.tint(vectorTint)
                             )
                         }
                     } else if (onDevice && packageName != null) {
-                        ThemePackagePreview(
-                            packageName = packageName,
-                            modifier = Modifier.fillMaxSize(),
-                            showSingleIcon = true
-                        )
+                        if (homepageStyle) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(shapeFill)
+                            ) {
+                                ThemePackagePreview(
+                                    packageName = packageName,
+                                    modifier = Modifier.fillMaxSize(),
+                                    showSingleIcon = true
+                                )
+                            }
+                        } else {
+                            ThemePackagePreview(
+                                packageName = packageName,
+                                modifier = Modifier.fillMaxSize(),
+                                showSingleIcon = true
+                            )
+                        }
                     } else {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Palette,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = paletteTint
                             )
                         }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -621,7 +664,7 @@ private fun ThemeListItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
+
                 val stateText = when (selectionState) {
                     is ThemeSelectionState.Active -> stringResource(R.string.active)
                     is ThemeSelectionState.Inactive -> stringResource(R.string.theme_not_applied)
@@ -635,20 +678,23 @@ private fun ThemeListItem(
                     )
                 }
             }
-            
+
             val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
             if (sidePreviewIds.size > 1) {
                 Box(
                     modifier = Modifier
                         .size(width = 48.dp, height = 80.dp)
                         .clip(MaterialTheme.shapes.extraSmall)
+                        .then(
+                            if (homepageStyle) Modifier.background(shapeFill) else Modifier
+                        )
                 ) {
                     Image(
                         painter = painterResource(sidePreviewIds[1]),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
-                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                        colorFilter = ColorFilter.tint(sidePreviewTint)
                     )
                 }
             }
