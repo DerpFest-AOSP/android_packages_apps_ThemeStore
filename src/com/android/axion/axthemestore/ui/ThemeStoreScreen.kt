@@ -586,14 +586,7 @@ private fun ThemeListItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            MaterialTheme.colorScheme.surfaceContainer
-                                        )
-                                    )
-                                ),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -715,14 +708,7 @@ private fun CompactThemeCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                                            MaterialTheme.colorScheme.surfaceContainer
-                                        )
-                                    )
-                                ),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
