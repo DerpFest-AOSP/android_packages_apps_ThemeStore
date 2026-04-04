@@ -398,7 +398,7 @@ private fun BrowseScreen(
                 text = stringResource(R.string.themes),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -511,7 +511,7 @@ private fun ThemeSection(
                 .padding(bottom = 8.dp),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         val chunkedThemes = themes.chunked(3)
