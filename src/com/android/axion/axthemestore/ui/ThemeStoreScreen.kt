@@ -666,17 +666,33 @@ private fun ThemeListItem(
                     )
                 }
 
-                val stateText = when (selectionState) {
-                    is ThemeSelectionState.Active -> stringResource(R.string.active)
-                    is ThemeSelectionState.Inactive -> stringResource(R.string.theme_not_applied)
-                    else -> null
-                }
-                stateText?.let {
-                    Text(
-                        text = "✓ $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                when (selectionState) {
+                    is ThemeSelectionState.Active -> {
+                        Text(
+                            text = "✓ ${stringResource(R.string.active)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    is ThemeSelectionState.Inactive -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = stringResource(R.string.theme_not_applied),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {}
                 }
             }
 
