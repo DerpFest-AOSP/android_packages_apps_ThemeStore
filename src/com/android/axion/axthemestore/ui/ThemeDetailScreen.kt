@@ -48,6 +48,7 @@ import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeOverlay
 import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.data.model.formatFileSize
+import com.android.axion.axthemestore.data.repository.ThemeRepository
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
@@ -133,12 +134,22 @@ fun ThemeDetailScreen(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = theme.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
+
+                val detailDescription = theme.description.ifBlank {
+                    when (theme.category) {
+                        ThemeRepository.ID_CATEGORY_WIFI -> stringResource(R.string.wifi_icons_desc)
+                        ThemeRepository.ID_CATEGORY_SIGNAL -> stringResource(R.string.signal_icons_desc)
+                        ThemeRepository.ID_CATEGORY_DATA -> stringResource(R.string.data_icons_desc)
+                        else -> ""
+                    }
+                }
+                if (detailDescription.isNotBlank()) {
+                    Text(
+                        text = detailDescription,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 if (theme.isUnified && theme.overlays.isNotEmpty()) {

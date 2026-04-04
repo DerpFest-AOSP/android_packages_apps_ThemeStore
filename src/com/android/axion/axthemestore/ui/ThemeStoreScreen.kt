@@ -619,13 +619,15 @@ private fun ThemeListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = theme.description.ifEmpty { theme.category },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (theme.description.isNotBlank()) {
+                    Text(
+                        text = theme.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 
                 val stateText = when (selectionState) {
                     is ThemeSelectionState.Active -> stringResource(R.string.active)

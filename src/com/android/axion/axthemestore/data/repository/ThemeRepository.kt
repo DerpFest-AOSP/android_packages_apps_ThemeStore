@@ -93,11 +93,8 @@ class ThemeRepository(private val context: Context) {
                         Theme(
                             id = "${categoryId}_${packageName.replace('.', '_')}",
                             name = label,
-                            description = when (kind) {
-                                "wifi" -> context.getString(R.string.wifi_icons_desc)
-                                "data" -> context.getString(R.string.data_icons_desc)
-                                else -> context.getString(R.string.signal_icons_desc)
-                            },
+                            // Long copy lives in string resources for detail screen only (see ThemeDetailScreen).
+                            description = "",
                             author = context.getString(R.string.bundled_overlay_author),
                             version = "1.0",
                             versionCode = vc,
