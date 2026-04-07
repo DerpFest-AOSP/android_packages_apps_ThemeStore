@@ -33,6 +33,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -48,6 +50,9 @@ import com.android.axion.axthemestore.data.model.ThemeOverlay
 import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.data.model.formatFileSize
 import com.android.axion.axthemestore.data.repository.ThemeRepository
+import com.android.axion.axthemestore.ui.components.BackGesturePreview
+import com.android.axion.axthemestore.ui.components.BatteryStylePreview
+import com.android.axion.axthemestore.ui.components.ChargingAnimationBannerPreview
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
@@ -105,14 +110,12 @@ fun ThemeDetailScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            val packageName = theme.overlays.firstOrNull()?.packageName
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
             ) {
-                DetailPreviewBox(packageName = packageName ?: "")
+                DetailPreviewBox(theme = theme)
             }
             
             Column(
@@ -210,7 +213,7 @@ fun ThemeDetailScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
-                } else if (theme.overlays.isNotEmpty() && !theme.isUiStyle) {
+                } else if (theme.overlays.isNotEmpty() && !theme.isUnified) {
                     Text(
                         text = stringResource(R.string.components),
                         style = MaterialTheme.typography.labelLarge,
@@ -364,6 +367,9 @@ private fun getComponentDisplayName(componentId: String): String {
     return when (componentId) {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi icons"
         "android.theme.customization.signal_icon" -> "Signal icons"
+        "android.theme.customization.back_gesture" -> "Back gesture"
+        "android.theme.customization.charging_animation" -> "Charging animation"
+        "android.theme.customization.battery_style" -> "Battery style"
         "android.customization.sb_data" -> "Mobile data icons"
         "statusbar_wifi", "wifi" -> "WiFi Icons"
         "statusbar_signal", "signal" -> "Signal Icons"
@@ -380,6 +386,9 @@ private fun getComponentDescription(componentId: String): String {
     return when (componentId) {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi strength indicators in the status bar"
         "android.theme.customization.signal_icon" -> "Cellular signal indicators in the status bar"
+        "android.theme.customization.back_gesture" -> "Back navigation gesture appearance"
+        "android.theme.customization.charging_animation" -> "Animation shown while charging"
+        "android.theme.customization.battery_style" -> "Battery icon shape in the status bar"
         "android.customization.sb_data" -> "Network type labels (LTE, 5G, etc.) next to the signal icon"
         "statusbar_wifi", "wifi" -> "WiFi signal indicators in status bar"
         "statusbar_signal", "signal" -> "Mobile network indicators in status bar"
@@ -466,54 +475,6 @@ private fun ApplySection(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        if (theme.isUiStyle) {
-            when (selectionState) {
-                is ThemeSelectionState.Active -> {
-                    Button(
-                        onClick = { },
-                        enabled = false,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            disabledContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.active))
-                    }
-                }
-                is ThemeSelectionState.Error -> {
-                    Text(
-                        text = stringResource(R.string.error_prefix, selectionState.message),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Button(
-                        onClick = {
-                            onClearError()
-                            onApplyClick()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.retry))
-                    }
-                }
-                else -> {
-                    Button(
-                        onClick = onApplyClick,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.apply))
-                    }
-                }
-            }
-            return
-        }
-
         when (selectionState) {
             is ThemeSelectionState.Missing -> {
                 Text(
@@ -590,7 +551,9 @@ private fun ApplySection(
 }
 
 @Composable
-private fun DetailPreviewBox(packageName: String) {
+private fun DetailPreviewBox(theme: Theme) {
+    val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
+    val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
     val context = LocalContext.current
     val previewMap = remember {
         val map = mutableMapOf<String, String>()
@@ -612,42 +575,75 @@ private fun DetailPreviewBox(packageName: String) {
         }
     } else emptyList()
 
+    val isChargingAnim =
+        packageName.contains("charging_animation", ignoreCase = true) ||
+            category.contains("charging_animation", ignoreCase = true)
+    val bgModifier = if (isChargingAnim) {
+        Modifier.background(Color.Black)
+    } else {
+        Modifier.background(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                    MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
+        )
+    }
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        modifier = Modifier.fillMaxSize().then(bgModifier),
         contentAlignment = Alignment.Center
     ) {
-        if (resIds.isNotEmpty()) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                resIds.forEach { resId ->
-                    val drawable = remember(resId) {
-                        ContextCompat.getDrawable(context, resId)
-                    }
-                    if (drawable != null) {
-                        Image(
-                            bitmap = remember(drawable) {
-                                drawable.toBitmap().asImageBitmap()
-                            },
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            colorFilter = ColorFilter.tint(
-                                MaterialTheme.colorScheme.onSurface
+        when {
+            isChargingAnim -> {
+                ChargingAnimationBannerPreview(
+                    packageName = packageName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            packageName.contains("battery", ignoreCase = true) ||
+                category.contains("battery", ignoreCase = true) -> {
+                BatteryStylePreview(
+                    packageName = packageName,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            packageName.contains("back_gesture", ignoreCase = true) ||
+                category.contains("back_gesture", ignoreCase = true) -> {
+                BackGesturePreview(modifier = Modifier.fillMaxSize())
+            }
+            resIds.isNotEmpty() -> {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    resIds.forEach { resId ->
+                        val drawable = remember(resId) {
+                            ContextCompat.getDrawable(context, resId)
+                        }
+                        if (drawable != null) {
+                            Image(
+                                bitmap = remember(drawable) {
+                                    drawable.toBitmap().asImageBitmap()
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                colorFilter = ColorFilter.tint(
+                                    MaterialTheme.colorScheme.onSurface
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
-        } else {
-            Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            else -> {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

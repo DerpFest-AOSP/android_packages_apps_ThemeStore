@@ -32,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
-import com.android.axion.axthemestore.engine.ThemeEngineProxy
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,15 +41,7 @@ fun InstalledComponentsScreen(
     onBackClick: () -> Unit
 ) {
     val categoryThemes by viewModel.categoryThemesState.collectAsStateWithLifecycle()
-    val iconTheme = remember { mutableStateOf<String?>(null) }
-    val uiStyle = remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        val proxy = ThemeEngineProxy(viewModel.getApplication())
-        iconTheme.value = proxy.getIconTheme()
-        uiStyle.value = proxy.getUiStyle()
-    }
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -243,7 +234,10 @@ private fun getCategoryDisplayName(categoryId: String): String {
         "wifi" -> "WiFi Icons"
         "signal" -> "Signal Icons"
         "android.customization.sb_data" -> "Mobile data icons"
-        else -> categoryId.replaceFirstChar { it.uppercase() }
+        "android.theme.customization.back_gesture", "back_gesture" -> "Back gesture"
+        "android.theme.customization.charging_animation", "charging_animation" -> "Charging animation"
+        "android.theme.customization.battery_style", "battery_style" -> "Battery style"
+        else -> categoryId.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 }
 
@@ -254,6 +248,9 @@ private fun getCategoryIcon(categoryId: String): ImageVector {
         "android.customization.sb_data" -> Icons.Default.DataUsage
         "systemui" -> Icons.Default.SettingsApplications
         "android" -> Icons.Default.Android
+        "android.theme.customization.back_gesture", "back_gesture" -> Icons.Default.Gesture
+        "android.theme.customization.charging_animation", "charging_animation" -> Icons.Default.Bolt
+        "android.theme.customization.battery_style", "battery_style" -> Icons.Default.BatteryFull
         else -> Icons.Default.Category
     }
 }

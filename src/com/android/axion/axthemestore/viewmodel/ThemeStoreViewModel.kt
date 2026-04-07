@@ -65,7 +65,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     
     init {
         loadThemes()
-        loadUiStyle()
         refreshComponentStates()
         loadSearchHistory()
     }
@@ -75,22 +74,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
         _categoryThemes.value = themeEngineProxy.getCategoryThemes()
     }
 
-    fun loadUiStyle() {
-        viewModelScope.launch {
-            val style = themeEngineProxy.getUiStyle()
-            _uiState.update { it.copy(currentUiStyle = style) }
-        }
-    }
-
-    fun setUiStyle(styleId: String) {
-        viewModelScope.launch {
-            if (themeEngineProxy.setUiStyle(styleId)) {
-                _uiState.update { it.copy(currentUiStyle = styleId) }
-                updateSelectionStates(_uiState.value.themes)
-            }
-        }
-    }
-    
     fun loadThemes(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -132,18 +115,10 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     }
     
     private fun updateSelectionStates(themes: List<Theme>) {
-        val currentStyle = themeEngineProxy.getUiStyle()
         val enabledThemes = themeEngineProxy.getEnabledThemes()
         
         val states = themes.associate { theme ->
             val state = when {
-                theme.isUiStyle -> {
-                    if (theme.uiStyleId == currentStyle) {
-                        ThemeSelectionState.Active
-                    } else {
-                        ThemeSelectionState.Inactive
-                    }
-                }
                 theme.isUnified && theme.overlays.isNotEmpty() -> {
                     val packageName = theme.overlays.first().packageName
                     val onDevice = repository.isThemeInstalled(packageName)
@@ -241,24 +216,6 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun applyTheme(theme: Theme) {
-        if (theme.isUiStyle) {
-            val styleId = theme.uiStyleId
-            if (styleId != null) {
-                viewModelScope.launch {
-                    if (themeEngineProxy.setUiStyle(styleId)) {
-                        _uiState.update { it.copy(currentUiStyle = styleId) }
-                        updateSelectionStates(_uiState.value.themes)
-                        Log.d(TAG, "Activated UI style: $styleId")
-                    } else {
-                        _themeStates.update { 
-                            it + (theme.id to ThemeSelectionState.Error("Failed to activate style")) 
-                        }
-                    }
-                }
-            }
-            return
-        }
-        
         if (theme.overlays.isEmpty()) {
             _themeStates.update { 
                 it + (theme.id to ThemeSelectionState.Error("No overlays available")) 
@@ -270,8 +227,12 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
             if (theme.isUnified) {
                 val overlay = theme.overlays.first()
 
-                val targetsToApply = _pendingComponentChanges.value[theme.id] 
-                    ?: emptySet()
+                val pending = _pendingComponentChanges.value[theme.id]
+                val targetsToApply = when {
+                    pending != null && pending.isNotEmpty() -> pending
+                    overlay.targets.isNotEmpty() -> overlay.targets.toSet()
+                    else -> emptySet()
+                }
 
                 if (targetsToApply.isNotEmpty()) {
                     if (themeEngineProxy.applyThemeComponents(overlay.packageName, targetsToApply.toList())) {
@@ -508,5 +469,4 @@ data class ThemeStoreUiState(
     val selectedCategory: String? = null,
     val searchQuery: String = "",
     val error: String? = null,
-    val currentUiStyle: String = ThemeEngineProxy.Companion.UiStyle.AXION
 )

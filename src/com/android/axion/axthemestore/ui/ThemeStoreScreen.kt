@@ -54,6 +54,8 @@ import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
+import com.android.axion.axthemestore.ui.components.BackGesturePreview
+import com.android.axion.axthemestore.ui.components.BatteryStylePreview
 import com.android.axion.axthemestore.ui.components.ThemeCard
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreUiState
@@ -580,7 +582,17 @@ private fun ThemeListItem(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val packageName = theme.overlays.firstOrNull()?.packageName
+            val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
+            val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
+            val isBattery =
+                packageName.contains("battery", ignoreCase = true) ||
+                    category.contains("battery", ignoreCase = true)
+            val isBackGesture =
+                packageName.contains("back_gesture", ignoreCase = true) ||
+                    category.contains("back_gesture", ignoreCase = true)
+            val isChargingAnim =
+                packageName.contains("charging_animation", ignoreCase = true) ||
+                    category.contains("charging_animation", ignoreCase = true)
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -590,8 +602,7 @@ private fun ThemeListItem(
                     selectionState is ThemeSelectionState.Inactive
 
                 run {
-                    val previewResIds = getLocalPreviewResIds(
-                        LocalContext.current, packageName ?: "")
+                    val previewResIds = getLocalPreviewResIds(LocalContext.current, packageName)
                     if (previewResIds.isNotEmpty()) {
                         Box(
                             modifier = Modifier
@@ -606,7 +617,42 @@ private fun ThemeListItem(
                                 colorFilter = ColorFilter.tint(vectorTint)
                             )
                         }
-                    } else if (onDevice && packageName != null) {
+                    } else if (isBattery) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(shapeFill),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BatteryStylePreview(
+                                packageName = packageName,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    } else if (isBackGesture) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(shapeFill),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            BackGesturePreview(modifier = Modifier.fillMaxSize())
+                        }
+                    } else if (isChargingAnim) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(shapeFill),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BatteryChargingFull,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = paletteTint
+                            )
+                        }
+                    } else if (onDevice && packageName.isNotEmpty()) {
                         if (homepageStyle) {
                             Box(
                                 modifier = Modifier
@@ -696,7 +742,7 @@ private fun ThemeListItem(
                 }
             }
 
-            val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
+            val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
             if (sidePreviewIds.size > 1) {
                 Box(
                     modifier = Modifier
@@ -743,9 +789,19 @@ private fun CompactThemeCard(
             ) {
                 val onDevice = selectionState is ThemeSelectionState.Active ||
                     selectionState is ThemeSelectionState.Inactive
-                val packageName = theme.overlays.firstOrNull()?.packageName
-                val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName ?: "")
-                
+                val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
+                val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
+                val isBattery =
+                    packageName.contains("battery", ignoreCase = true) ||
+                        category.contains("battery", ignoreCase = true)
+                val isBackGesture =
+                    packageName.contains("back_gesture", ignoreCase = true) ||
+                        category.contains("back_gesture", ignoreCase = true)
+                val isChargingAnim =
+                    packageName.contains("charging_animation", ignoreCase = true) ||
+                        category.contains("charging_animation", ignoreCase = true)
+                val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
+
                 when {
                     compactPreviewIds.isNotEmpty() -> {
                         Box(
@@ -761,7 +817,29 @@ private fun CompactThemeCard(
                             )
                         }
                     }
-                    onDevice && packageName != null -> {
+                    isBattery -> {
+                        BatteryStylePreview(
+                            packageName = packageName,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    isBackGesture -> {
+                        BackGesturePreview(modifier = Modifier.fillMaxSize())
+                    }
+                    isChargingAnim -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BatteryChargingFull,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    onDevice && packageName.isNotEmpty() -> {
                         ThemePackagePreview(
                             packageName = packageName,
                             modifier = Modifier.fillMaxSize()

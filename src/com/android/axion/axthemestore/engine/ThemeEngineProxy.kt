@@ -37,6 +37,15 @@ class ThemeEngineProxy(private val context: Context) {
 
         const val SETTINGS_THEME_ENGINE_DATA = "theme_engine_data"
 
+        /** OMS categories mirrored into [Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES]. */
+        private val SYNCED_OVERLAY_CATEGORIES = setOf(
+            "android.theme.customization.icon_pack.android",
+            "android.theme.customization.icon_pack.systemui",
+            "android.theme.customization.back_gesture",
+            "android.theme.customization.charging_animation",
+            "android.theme.customization.battery_style",
+        )
+
         object Category {
             const val STATUSBAR_WIFI = "statusbar_wifi"
             const val STATUSBAR_SIGNAL = "statusbar_signal"
@@ -302,12 +311,16 @@ class ThemeEngineProxy(private val context: Context) {
         val uniquePackages = updatedCategoryThemes.values.toSet()
         val iconThemePackage = if (uniquePackages.size == 1) uniquePackages.first() else null
 
-        return saveThemeConfig(config.copy(
+        val saved = saveThemeConfig(config.copy(
             iconTheme = iconThemePackage,
             iconThemeTargets = allTargets,
             categoryThemes = updatedCategoryThemes,
             themes = themes
         ))
+        if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
+        }
+        return saved
     }
     
     fun getIconThemeTargets(): List<String> {
@@ -325,6 +338,9 @@ class ThemeEngineProxy(private val context: Context) {
             iconThemeTargets = targets,
             categoryThemes = updatedCategoryThemes
         ))
+        if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
+        }
         return saved
     }
     
@@ -383,6 +399,7 @@ class ThemeEngineProxy(private val context: Context) {
         ))
         if (saved) {
             setOverlayEnabled(packageName, true, oldPackage)
+            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
         return saved
     }
@@ -414,10 +431,38 @@ class ThemeEngineProxy(private val context: Context) {
             categoryThemes = updatedCategoryThemes,
             themes = themes
         ))
-        if (saved && oldPackage != null) {
-            setOverlayEnabled(oldPackage, false, null)
+        if (saved) {
+            if (oldPackage != null) {
+                setOverlayEnabled(oldPackage, false, null)
+            }
+            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
         return saved
+    }
+
+    private fun syncOverlayPackagesSettings(categoryThemes: Map<String, String>) {
+        try {
+            val current = Settings.Secure.getStringForUser(
+                context.contentResolver,
+                Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
+                UserHandle.USER_CURRENT
+            )
+            val json = if (current.isNullOrBlank()) JSONObject() else JSONObject(current)
+            SYNCED_OVERLAY_CATEGORIES.forEach { json.remove(it) }
+            categoryThemes.forEach { (category, packageName) ->
+                if (category in SYNCED_OVERLAY_CATEGORIES && packageName.isNotBlank()) {
+                    json.put(category, packageName)
+                }
+            }
+            Settings.Secure.putStringForUser(
+                context.contentResolver,
+                Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
+                json.toString(),
+                UserHandle.USER_CURRENT
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to sync THEME_CUSTOMIZATION_OVERLAY_PACKAGES", e)
+        }
     }
 
     private fun setOverlayEnabled(packageName: String, enabled: Boolean, disablePackage: String?) {
@@ -548,6 +593,7 @@ class ThemeEngineProxy(private val context: Context) {
             themes = themes
         ))
         if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
             notifyThemeChangedAfterOverlayChange()
         }
         return saved
