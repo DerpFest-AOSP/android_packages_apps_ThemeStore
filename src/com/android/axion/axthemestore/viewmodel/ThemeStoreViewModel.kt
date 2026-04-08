@@ -21,6 +21,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeSelectionState
@@ -29,15 +30,18 @@ import com.android.axion.axthemestore.engine.ThemeEngineProxy
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.*
 
-class ThemeStoreViewModel(application: Application) : AndroidViewModel(application) {
-    
+class ThemeStoreViewModel(
+    application: Application,
+    val storeSection: StoreSection = StoreSection.All,
+) : AndroidViewModel(application) {
+
     companion object {
         private const val TAG = "ThemeStoreViewModel"
         private const val PREFS_NAME = "theme_store_prefs"
         private const val KEY_SEARCH_HISTORY = "search_history"
         private const val MAX_SEARCH_HISTORY = 10
     }
-    
+
     private val repository = ThemeRepository(application)
     private val themeEngineProxy = ThemeEngineProxy(application)
     private val sharedPrefs = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -64,6 +68,7 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
     val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
     
     init {
+        _uiState.update { it.copy(storeSection = storeSection) }
         loadThemes()
         refreshComponentStates()
         loadSearchHistory()
@@ -78,14 +83,15 @@ class ThemeStoreViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
-            repository.fetchThemes(forceRefresh).fold(
+            repository.fetchThemes(forceRefresh, storeSection).fold(
                 onSuccess = { response ->
                     _uiState.update { state ->
                         state.copy(
                             isLoading = false,
                             themes = response.themes,
                             categories = response.categories,
-                            error = null
+                            error = null,
+                            storeSection = storeSection,
                         )
                     }
                     updateSelectionStates(response.themes)
@@ -469,4 +475,5 @@ data class ThemeStoreUiState(
     val selectedCategory: String? = null,
     val searchQuery: String = "",
     val error: String? = null,
+    val storeSection: StoreSection = StoreSection.All,
 )

@@ -21,6 +21,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeOverlay
@@ -34,8 +35,7 @@ import org.json.JSONObject
  * `vendor/overlay/Icons` (see [tools/generate_overlay_icon_catalog.py]). Does not enumerate
  * installed APKs or use the network.
  *
- * A small set of extra RROs (battery / charging / back gesture) is merged from installed
- * packages — only [STORE_DISCOVERED_OVERLAY_CATEGORIES], not every customization overlay on the device.
+ * Extra RROs (battery / charging / back gesture) are merged per [StoreSection.customizationOmsCategoriesToDiscover].
  */
 class ThemeRepository(private val context: Context) {
     
@@ -51,64 +51,56 @@ class ThemeRepository(private val context: Context) {
         const val ID_CATEGORY_WIFI = "wifi_icons"
         const val ID_CATEGORY_SIGNAL = "signal_icons"
         const val ID_CATEGORY_DATA = "data_icons"
-
-        /**
-         * Only these OMS overlay categories are discovered from [PackageManager] and merged into the
-         * store. All other `android.theme.customization.*` RROs on the image are ignored so the UI
-         * stays limited to network icons (catalog) plus these extras.
-         */
-        private val STORE_DISCOVERED_OVERLAY_CATEGORIES = setOf(
-            "android.theme.customization.battery_style",
-            "android.theme.customization.charging_animation",
-            "android.theme.customization.back_gesture",
-        )
     }
     
     private var cachedResponse: ThemesResponse? = null
+    private var cachedSection: StoreSection? = null
     private var lastFetchTime: Long = 0
-    
-    suspend fun fetchThemes(forceRefresh: Boolean = false): Result<ThemesResponse> {
+
+    suspend fun fetchThemes(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<ThemesResponse> {
         return withContext(Dispatchers.IO) {
             val now = System.currentTimeMillis()
-            if (!forceRefresh && cachedResponse != null &&
+            if (!forceRefresh && cachedResponse != null && cachedSection == section &&
                 (now - lastFetchTime) < CACHE_DURATION_MS) {
                 return@withContext Result.success(cachedResponse!!)
             }
-            
+
             try {
                 val text = context.resources.openRawResource(R.raw.overlay_icon_catalog)
                     .bufferedReader().use { it.readText() }
                 val json = JSONObject(text)
                 val entries = json.getJSONArray("entries")
                 val pm = context.packageManager
-                
-                val themes = mutableListOf<Theme>()
-                
+
+                val catalogThemes = mutableListOf<Theme>()
+
                 for (i in 0 until entries.length()) {
                     val o = entries.getJSONObject(i)
                     val packageName = o.getString("package")
                     val label = o.getString("label")
                     val kind = o.getString("kind")
                     val customizationKey = o.getString("customizationKey")
-                    
+
                     val categoryId = when (kind) {
                         "wifi" -> ID_CATEGORY_WIFI
                         "signal" -> ID_CATEGORY_SIGNAL
                         "data" -> ID_CATEGORY_DATA
                         else -> continue
                     }
-                    
+
                     val vc = try {
                         pm.getPackageInfo(packageName, 0).longVersionCode.toInt()
                     } catch (_: PackageManager.NameNotFoundException) {
                         1
                     }
-                    
-                    themes.add(
+
+                    catalogThemes.add(
                         Theme(
                             id = "${categoryId}_${packageName.replace('.', '_')}",
                             name = label,
-                            // Long copy lives in string resources for detail screen only (see ThemeDetailScreen).
                             description = "",
                             author = context.getString(R.string.bundled_overlay_author),
                             version = "1.0",
@@ -135,14 +127,20 @@ class ThemeRepository(private val context: Context) {
                     )
                 }
 
-                val discovered = discoverInstalledRroThemes(pm)
-                val catalogPackages = themes.mapNotNull { it.overlays.firstOrNull()?.packageName }.toSet()
-                val mergedDiscovered = discovered.filter { theme ->
-                    theme.overlays.firstOrNull()?.packageName !in catalogPackages
-                }
-                themes.addAll(mergedDiscovered)
+                val mergedDiscovered = section.customizationOmsCategoriesToDiscover()?.let { allowed ->
+                    if (allowed.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val discovered = discoverInstalledRroThemes(pm, allowed)
+                        val catalogPackages =
+                            catalogThemes.mapNotNull { it.overlays.firstOrNull()?.packageName }.toSet()
+                        discovered.filter { theme ->
+                            theme.overlays.firstOrNull()?.packageName !in catalogPackages
+                        }
+                    }
+                } ?: emptyList()
 
-                val categories = listOf(
+                val baseCategories = listOf(
                     ThemeCategory(
                         id = ID_CATEGORY_WIFI,
                         name = context.getString(R.string.section_wifi_icons),
@@ -160,11 +158,11 @@ class ThemeRepository(private val context: Context) {
                     )
                 )
 
-                val knownCategoryIds = categories.map { it.id }.toSet()
+                val knownBaseIds = baseCategories.map { it.id }.toSet()
                 val extraCategories = mergedDiscovered
                     .map { it.category }
                     .distinct()
-                    .filter { it !in knownCategoryIds }
+                    .filter { it !in knownBaseIds }
                     .map { catId ->
                         ThemeCategory(
                             id = catId,
@@ -173,18 +171,35 @@ class ThemeRepository(private val context: Context) {
                         )
                     }
 
+                val (themes, categories) = when (section) {
+                    StoreSection.All -> {
+                        val combined = catalogThemes + mergedDiscovered
+                        Pair(combined, baseCategories + extraCategories)
+                    }
+                    StoreSection.NetworkIcons -> Pair(catalogThemes.toList(), baseCategories)
+                    StoreSection.BatteryStyles,
+                    StoreSection.BackGesture,
+                    StoreSection.ChargingAnimation,
+                    StoreSection.StatusBarCustomization,
+                    -> Pair(mergedDiscovered, extraCategories)
+                }
+
                 val response = ThemesResponse(
                     version = json.optInt("version", 1),
                     lastUpdated = "",
                     themes = themes,
-                    categories = categories + extraCategories,
+                    categories = categories,
                     components = emptyList()
                 )
                 cachedResponse = response
+                cachedSection = section
                 lastFetchTime = now
-                
-                Log.d(TAG, "Loaded ${themes.size} offline overlay entries from raw catalog")
-                
+
+                Log.d(
+                    TAG,
+                    "Loaded store section=$section: ${themes.size} themes, ${categories.size} categories"
+                )
+
                 Result.success(response)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load overlay_icon_catalog", e)
@@ -192,13 +207,19 @@ class ThemeRepository(private val context: Context) {
             }
         }
     }
-    
-    suspend fun getThemes(forceRefresh: Boolean = false): Result<List<Theme>> {
-        return fetchThemes(forceRefresh).map { it.themes }
+
+    suspend fun getThemes(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<List<Theme>> {
+        return fetchThemes(forceRefresh, section).map { it.themes }
     }
-    
-    suspend fun getCategories(forceRefresh: Boolean = false): Result<List<ThemeCategory>> {
-        return fetchThemes(forceRefresh).map { it.categories }
+
+    suspend fun getCategories(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<List<ThemeCategory>> {
+        return fetchThemes(forceRefresh, section).map { it.categories }
     }
     
     suspend fun getThemesByCategory(
@@ -240,10 +261,14 @@ class ThemeRepository(private val context: Context) {
     
     fun clearCache() {
         cachedResponse = null
+        cachedSection = null
         lastFetchTime = 0
     }
 
-    private fun discoverInstalledRroThemes(pm: PackageManager): List<Theme> {
+    private fun discoverInstalledRroThemes(
+        pm: PackageManager,
+        allowedOmsCategories: Set<String>,
+    ): List<Theme> {
         val themes = mutableListOf<Theme>()
         @Suppress("DEPRECATION")
         val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
@@ -251,7 +276,7 @@ class ThemeRepository(private val context: Context) {
             if (packageInfo.applicationInfo?.enabled == false) continue
             if (!packageInfo.hasOverlayTarget()) continue
             val overlayCategory = packageInfo.overlayCategory ?: continue
-            if (overlayCategory !in STORE_DISCOVERED_OVERLAY_CATEGORIES) continue
+            if (overlayCategory !in allowedOmsCategories) continue
 
             val appInfo = packageInfo.applicationInfo ?: continue
             val appLabel = pm.getApplicationLabel(appInfo).toString()

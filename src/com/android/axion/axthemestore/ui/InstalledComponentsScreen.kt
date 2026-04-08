@@ -32,15 +32,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstalledComponentsScreen(
     viewModel: ThemeStoreViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    storeSection: StoreSection = viewModel.storeSection,
 ) {
     val categoryThemes by viewModel.categoryThemesState.collectAsStateWithLifecycle()
+    val filteredCategoryThemes = remember(categoryThemes, storeSection) {
+        categoryThemes.filterKeys { storeSection.isRelevantCategoryKey(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -91,18 +96,40 @@ fun InstalledComponentsScreen(
                 }
             }
             
-            if (categoryThemes.isNotEmpty()) {
+            if (filteredCategoryThemes.isNotEmpty()) {
                 item {
                     SectionHeader(title = stringResource(R.string.icon_theme_components))
                 }
                 
-                items(categoryThemes.entries.toList()) { (category, packageName) ->
+                items(filteredCategoryThemes.entries.toList()) { (category, packageName) ->
                     ComponentCard(
                         componentName = getCategoryDisplayName(category),
                         packageOrId = packageName,
                         icon = getCategoryIcon(category),
                         isBuiltIn = false
                     )
+                }
+            } else if (filteredCategoryThemes.isEmpty() && categoryThemes.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.no_components_in_section),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             } else {
                 item {

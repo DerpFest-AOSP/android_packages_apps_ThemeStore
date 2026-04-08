@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
 import com.android.axion.axthemestore.data.model.ThemeSelectionState
@@ -397,7 +398,7 @@ private fun BrowseScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.themes),
+                text = browseScreenTitle(uiState.storeSection),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -1001,6 +1002,20 @@ private fun EmptyState(isSearching: Boolean) {
             )
         }
     }
+}
+
+@Composable
+private fun browseScreenTitle(section: StoreSection): String {
+    return stringResource(
+        when (section) {
+            StoreSection.NetworkIcons -> R.string.store_section_network_icons
+            StoreSection.BatteryStyles -> R.string.store_section_battery_styles
+            StoreSection.BackGesture -> R.string.store_section_back_gesture
+            StoreSection.ChargingAnimation -> R.string.store_section_charging_animation
+            StoreSection.StatusBarCustomization -> R.string.store_section_status_bar_customization
+            StoreSection.All -> R.string.store_title_all
+        }
+    )
 }
 
 private val sPreviewMapCache = mutableMapOf<String, String>()

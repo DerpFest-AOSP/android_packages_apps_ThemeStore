@@ -25,17 +25,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.ui.MainScreen
 import com.android.axion.axthemestore.ui.theme.AxThemeStoreTheme
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
+import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModelFactory
 
 class MainActivity : ComponentActivity() {
-    
-    private val viewModel: ThemeStoreViewModel by viewModels()
+
+    private val viewModel: ThemeStoreViewModel by viewModels {
+        ThemeStoreViewModelFactory(application, StoreSection.fromIntent(intent))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        setTitleForSection(StoreSection.fromIntent(intent))
 
         setContent {
             AxThemeStoreTheme {
@@ -47,5 +53,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun setTitleForSection(section: StoreSection) {
+        val titleRes = when (section) {
+            StoreSection.NetworkIcons -> R.string.store_section_network_icons
+            StoreSection.BatteryStyles -> R.string.store_section_battery_styles
+            StoreSection.BackGesture -> R.string.store_section_back_gesture
+            StoreSection.ChargingAnimation -> R.string.store_section_charging_animation
+            StoreSection.StatusBarCustomization -> R.string.store_section_status_bar_customization
+            StoreSection.All -> R.string.store_title_all
+        }
+        setTitle(titleRes)
     }
 }
