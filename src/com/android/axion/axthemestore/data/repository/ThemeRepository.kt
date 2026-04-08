@@ -33,6 +33,9 @@ import org.json.JSONObject
  * Offline catalog from [R.raw.overlay_icon_catalog], produced at build time from
  * `vendor/overlay/Icons` (see [tools/generate_overlay_icon_catalog.py]). Does not enumerate
  * installed APKs or use the network.
+ *
+ * A small set of extra RROs (battery / charging / back gesture) is merged from installed
+ * packages — only [STORE_DISCOVERED_OVERLAY_CATEGORIES], not every customization overlay on the device.
  */
 class ThemeRepository(private val context: Context) {
     
@@ -49,17 +52,15 @@ class ThemeRepository(private val context: Context) {
         const val ID_CATEGORY_SIGNAL = "signal_icons"
         const val ID_CATEGORY_DATA = "data_icons"
 
-        private val THEMEPICKER_CATEGORIES = setOf(
-            "android.theme.customization.font",
-            "android.theme.customization.adaptive_icon_shape",
-            "android.theme.customization.icon_pack.android",
-            "android.theme.customization.icon_pack.systemui",
-            "android.theme.customization.icon_pack.settings",
-            "android.theme.customization.icon_pack.launcher",
-            "android.theme.customization.icon_pack.themepicker",
-            "android.theme.customization.system_palette",
-            "android.theme.customization.accent_color",
-            "android.theme.customization.color_source",
+        /**
+         * Only these OMS overlay categories are discovered from [PackageManager] and merged into the
+         * store. All other `android.theme.customization.*` RROs on the image are ignored so the UI
+         * stays limited to network icons (catalog) plus these extras.
+         */
+        private val STORE_DISCOVERED_OVERLAY_CATEGORIES = setOf(
+            "android.theme.customization.battery_style",
+            "android.theme.customization.charging_animation",
+            "android.theme.customization.back_gesture",
         )
     }
     
@@ -250,8 +251,7 @@ class ThemeRepository(private val context: Context) {
             if (packageInfo.applicationInfo?.enabled == false) continue
             if (!packageInfo.hasOverlayTarget()) continue
             val overlayCategory = packageInfo.overlayCategory ?: continue
-            if (!overlayCategory.startsWith("android.theme.customization.")) continue
-            if (overlayCategory in THEMEPICKER_CATEGORIES) continue
+            if (overlayCategory !in STORE_DISCOVERED_OVERLAY_CATEGORIES) continue
 
             val appInfo = packageInfo.applicationInfo ?: continue
             val appLabel = pm.getApplicationLabel(appInfo).toString()
