@@ -57,6 +57,13 @@ private data class BatteryShapeSpec(
     val viewportHeight: Float,
     val fillPathData: String? = null,
     val accentPathData: String? = null,
+    /**
+     * When true, scale X and Y independently to fill the preview (same idea as the status bar drawable).
+     * Use for tall design boxes that should read as landscape in the status bar.
+     */
+    val nonUniformScale: Boolean = false,
+    /** Multiplied by min(scaleX, scaleY) for outline stroke width. */
+    val strokeWidthFactor: Float = 0.7f,
 )
 
 private val BATTERY_SHAPES = mapOf(
@@ -89,6 +96,15 @@ private val BATTERY_SHAPES = mapOf(
         fillPathData = "M1.93,3.37L1.93,8.66A1.85 1.85 0 0 0 3.78,10.51L18.04,10.51A1.85 1.85 0 0 0 19.89,8.66L19.89,3.37A1.85 1.85 0 0 0 18.04,1.52L3.78,1.52A1.85 1.85 0 0 0 1.93,3.37z",
         accentPathData = "M12.21,6.01C12.05,7.95,9.45,7.95,9.29,6.01C9.34,5.36,10.21,5.36,10.27,6.01C10.22,6.66,11.28,6.66,11.23,6.01C11.29,5.36,12.16,5.36,12.21,6.01zM15.62,5.03C16.16,5.03,16.59,5.47,16.59,6.01C16.59,6.54,16.16,6.98,15.62,6.98C15.08,6.98,14.65,6.54,14.65,6.01C14.65,5.47,15.08,5.03,15.62,5.03zM5.88,5.03C6.42,5.03,6.86,5.47,6.86,6.01C6.86,6.54,6.42,6.98,5.88,6.98C5.34,6.98,4.91,6.54,4.91,6.01C4.91,5.47,5.34,5.03,5.88,5.03z",
     ),
+    /** Full perimeter from overlay (24-wide); first bar matches pill geometry like bars 2–3. */
+    "faintui" to BatteryShapeSpec(
+        pathData = "M3.6,0L17.9,0A3.6,3,0,0,1,21.5,3L21.5,12A3.6,3,0,0,1,17.9,15L3.6,15A3.6,3,0,0,1,0,12L0,3A3.6,3,0,0,1,3.6,0ZM12.08,3L12.08,12A0.6,0.5,0,0,0,12.68,12.5L13.48,12.5A0.6,0.5,0,0,0,14.08,12L14.08,3A0.6,0.5,0,0,0,13.48,2.5L12.68,2.5A0.6,0.5,0,0,0,12.08,3ZM8.58,3L8.58,12A0.6,0.5,0,0,0,9.18,12.5L9.98,12.5A0.6,0.5,0,0,0,10.58,12L10.58,3A0.6,0.5,0,0,0,9.98,2.5L9.18,2.5A0.6,0.5,0,0,0,8.58,3ZM4.66,3L4.66,12A0.6,0.5,0,0,0,5.26,12.5L6.06,12.5A0.6,0.5,0,0,0,6.66,12L6.66,3A0.6,0.5,0,0,0,6.06,2.5L5.26,2.5A0.6,0.5,0,0,0,4.66,3ZM21.5,10.83333L21.5,9.46667L22,9.46667Q22.5,9.46667,22.5,9.05L22.5,5.95Q22.5,5.53333,22,5.53333L21.5,5.53333L21.5,4.16667L22.5,4.16667Q24,4.16667,24,5.41667L24,9.58333Q24,10.83333,22.5,10.83333L21.5,10.83333ZM1.84,3.43333L1.84,11.56667A2.28,1.9,0,0,0,4.12,13.46667L17.22,13.46667A2.28,1.9,0,0,0,19.5,11.56667L19.5,3.43333A2.28,1.9,0,0,0,17.22,1.53333L4.12,1.53333A2.28,1.9,0,0,0,1.84,3.43333Z",
+        viewportWidth = 24f,
+        viewportHeight = 15f,
+        fillPathData = "M1.84,3.43333L1.84,11.56667A2.28,1.9,0,0,0,4.12,13.46667L17.22,13.46667A2.28,1.9,0,0,0,19.5,11.56667L19.5,3.43333A2.28,1.9,0,0,0,17.22,1.53333L4.12,1.53333A2.28,1.9,0,0,0,1.84,3.43333Z",
+        nonUniformScale = true,
+        strokeWidthFactor = 0.28f,
+    ),
 )
 
 @Composable
@@ -112,10 +128,21 @@ fun BatteryStylePreview(packageName: String, modifier: Modifier = Modifier) {
         modifier = modifier.drawWithContent {
             val vw = spec.viewportWidth
             val vh = spec.viewportHeight
-            val scale = min(size.width / vw, size.height / vh) * 0.75f
-            val dx = (size.width - vw * scale) / 2f
-            val dy = (size.height - vh * scale) / 2f
-            val matrix = Matrix().apply { setScale(scale, scale); postTranslate(dx, dy) }
+            val pad = 0.56f
+            val sx: Float
+            val sy: Float
+            if (spec.nonUniformScale) {
+                sx = size.width * pad / vw
+                sy = size.height * pad / vh
+            } else {
+                val s = min(size.width / vw, size.height / vh) * 0.64f
+                sx = s
+                sy = s
+            }
+            val dx = (size.width - vw * sx) / 2f
+            val dy = (size.height - vh * sy) / 2f
+            val matrix = Matrix().apply { setScale(sx, sy); postTranslate(dx, dy) }
+            val strokePx = min(sx, sy) * spec.strokeWidthFactor
 
             val outlinePath = Path(basePath).apply { transform(matrix) }
             val fillPath: Path? = baseFillPath?.let { Path(it).apply { transform(matrix) } }
@@ -131,7 +158,7 @@ fun BatteryStylePreview(packageName: String, modifier: Modifier = Modifier) {
                 }
                 canvas.nativeCanvas.drawPath(outlinePath, Paint().apply {
                     color = strokeColorArgb
-                    strokeWidth = scale * 0.7f
+                    strokeWidth = strokePx
                     style = Paint.Style.STROKE
                     isAntiAlias = true
                 })

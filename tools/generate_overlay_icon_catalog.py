@@ -2,12 +2,16 @@
 # Copyright (C) 2026 DerpFest / AxThemeStore
 # SPDX-License-Identifier: Apache-2.0
 #
-# Scans vendor overlay icon RRO trees and writes res/raw/overlay_icon_catalog.json
+# Scans vendor overlay RRO trees and writes res/raw/overlay_icon_catalog.json
 # for a fully offline catalog (no runtime APK enumeration).
 #
-# Usage (from repo root):
+# Scans under --vendor-overlay:
+#   Icons/           — Wi‑Fi, signal, mobile data icon overlays
+#   themes/battery/  — battery shape (android.theme.customization.battery_style)
+#
+# Usage (from AxThemeStore):
 #   python3 tools/generate_overlay_icon_catalog.py \
-#     --icons-root /path/to/vendor/overlay/Icons \
+#     --vendor-overlay /path/to/vendor/overlay \
 #     --out res/raw/overlay_icon_catalog.json
 
 from __future__ import annotations
@@ -15,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -24,6 +27,7 @@ ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
 WIFI_CAT = "android.theme.customization.wifi_icon"
 SIGNAL_CAT = "android.theme.customization.signal_icon"
 DATA_CAT = "android.customization.sb_data"
+BATTERY_CAT = "android.theme.customization.battery_style"
 
 
 def parse_manifest(path: str) -> dict | None:
@@ -47,7 +51,7 @@ def parse_manifest(path: str) -> dict | None:
         elif tag == "application":
             label = el.get(ANDROID_NS + "label") or el.get("label")
 
-    if category not in (WIFI_CAT, SIGNAL_CAT, DATA_CAT):
+    if category not in (WIFI_CAT, SIGNAL_CAT, DATA_CAT, BATTERY_CAT):
         return None
 
     if not label:
@@ -57,8 +61,10 @@ def parse_manifest(path: str) -> dict | None:
         kind = "wifi"
     elif category == SIGNAL_CAT:
         kind = "signal"
-    else:
+    elif category == DATA_CAT:
         kind = "data"
+    else:
+        kind = "battery"
     return {
         "package": pkg,
         "label": label,
@@ -77,8 +83,8 @@ def scan(icons_root: str) -> list[dict]:
         if info:
             entries.append(info)
 
-    # Stable order: Wi‑Fi, signal, data; by label
-    kind_order = {"wifi": 0, "signal": 1, "data": 2}
+    # Stable order: Wi‑Fi, signal, data, battery; by label
+    kind_order = {"wifi": 0, "signal": 1, "data": 2, "battery": 3}
     entries.sort(
         key=lambda e: (kind_order.get(e["kind"], 9), e["label"].lower())
     )
@@ -88,9 +94,12 @@ def scan(icons_root: str) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument(
+        "--vendor-overlay",
+        help="Path to vendor/overlay (scans Icons/ and themes/battery/)",
+    )
+    ap.add_argument(
         "--icons-root",
-        required=True,
-        help="Path to vendor/overlay/Icons",
+        help="Only scan vendor/overlay/Icons (omit themes/battery)",
     )
     ap.add_argument(
         "--out",
@@ -99,11 +108,41 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    if not os.path.isdir(args.icons_root):
-        print(f"ERROR: not a directory: {args.icons_root}", file=sys.stderr)
+    if args.icons_root and args.vendor_overlay:
+        print("ERROR: use either --vendor-overlay or --icons-root, not both", file=sys.stderr)
         return 1
 
-    entries = scan(args.icons_root)
+    if not args.vendor_overlay and not args.icons_root:
+        print("ERROR: pass --vendor-overlay or --icons-root", file=sys.stderr)
+        return 1
+
+    entries: list[dict] = []
+    if args.vendor_overlay:
+        vo = os.path.abspath(args.vendor_overlay)
+        if not os.path.isdir(vo):
+            print(f"ERROR: not a directory: {vo}", file=sys.stderr)
+            return 1
+        icons = os.path.join(vo, "Icons")
+        if os.path.isdir(icons):
+            entries.extend(scan(icons))
+        else:
+            print(f"WARN: missing Icons under {vo}", file=sys.stderr)
+        battery = os.path.join(vo, "themes", "battery")
+        if os.path.isdir(battery):
+            entries.extend(scan(battery))
+        else:
+            print(f"WARN: missing themes/battery under {vo}", file=sys.stderr)
+    else:
+        if not os.path.isdir(args.icons_root):
+            print(f"ERROR: not a directory: {args.icons_root}", file=sys.stderr)
+            return 1
+        entries = scan(args.icons_root)
+
+    kind_order = {"wifi": 0, "signal": 1, "data": 2, "battery": 3}
+    entries.sort(
+        key=lambda e: (kind_order.get(e["kind"], 9), e["label"].lower())
+    )
+
     out_dir = os.path.dirname(args.out)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)

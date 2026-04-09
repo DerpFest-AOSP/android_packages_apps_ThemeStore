@@ -39,6 +39,12 @@
       "customizationKey": "android.theme.customization.wifi_icon"
     },
     {
+      "package": "com.custom.overlay.systemui.wifiHollow",
+      "label": "Hollow",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
       "package": "com.derp.systemui.wifibar_g",
       "label": "Inside",
       "kind": "wifi",
@@ -131,6 +137,12 @@
     {
       "package": "com.custom.overlay.systemui.signalGradicon",
       "label": "Gradicon",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.signalHollow",
+      "label": "Hollow",
       "kind": "signal",
       "customizationKey": "android.theme.customization.signal_icon"
     },
@@ -247,6 +259,42 @@
       "label": "Plumpy",
       "kind": "data",
       "customizationKey": "android.customization.sb_data"
+    },
+    {
+      "package": "com.android.systemui.battery.faintui",
+      "label": "FaintUI",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.ios15",
+      "label": "iOS 15",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.ios16",
+      "label": "iOS 16",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.oneui7",
+      "label": "OneUI 7",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.origami",
+      "label": "Origami",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.smiley",
+      "label": "Smiley",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
     }
   ]
 }

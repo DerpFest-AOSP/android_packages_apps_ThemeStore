@@ -21,6 +21,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StandardComponents
 import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
@@ -32,7 +33,7 @@ import org.json.JSONObject
 
 /**
  * Offline catalog from [R.raw.overlay_icon_catalog], produced at build time from
- * `vendor/overlay/Icons` (see [tools/generate_overlay_icon_catalog.py]). Does not enumerate
+ * `vendor/overlay` (Icons + themes/battery; see [tools/generate_overlay_icon_catalog.py]). Does not enumerate
  * installed APKs or use the network.
  *
  * Extra RROs (battery / charging / back gesture) are merged per [StoreSection.customizationOmsCategoriesToDiscover].
@@ -51,6 +52,7 @@ class ThemeRepository(private val context: Context) {
         const val ID_CATEGORY_WIFI = "wifi_icons"
         const val ID_CATEGORY_SIGNAL = "signal_icons"
         const val ID_CATEGORY_DATA = "data_icons"
+        const val ID_CATEGORY_BATTERY = StandardComponents.BATTERY_STYLE
     }
     
     private var cachedResponse: ThemesResponse? = null
@@ -88,6 +90,7 @@ class ThemeRepository(private val context: Context) {
                         "wifi" -> ID_CATEGORY_WIFI
                         "signal" -> ID_CATEGORY_SIGNAL
                         "data" -> ID_CATEGORY_DATA
+                        "battery" -> ID_CATEGORY_BATTERY
                         else -> continue
                     }
 
@@ -140,23 +143,38 @@ class ThemeRepository(private val context: Context) {
                     }
                 } ?: emptyList()
 
-                val baseCategories = listOf(
-                    ThemeCategory(
-                        id = ID_CATEGORY_WIFI,
-                        name = context.getString(R.string.section_wifi_icons),
-                        icon = "wifi"
-                    ),
-                    ThemeCategory(
-                        id = ID_CATEGORY_SIGNAL,
-                        name = context.getString(R.string.section_signal_icons),
-                        icon = "signal_cellular_alt"
-                    ),
-                    ThemeCategory(
-                        id = ID_CATEGORY_DATA,
-                        name = context.getString(R.string.section_data_icons),
-                        icon = "data_usage"
+                val baseCategories = buildList {
+                    add(
+                        ThemeCategory(
+                            id = ID_CATEGORY_WIFI,
+                            name = context.getString(R.string.section_wifi_icons),
+                            icon = "wifi"
+                        )
                     )
-                )
+                    add(
+                        ThemeCategory(
+                            id = ID_CATEGORY_SIGNAL,
+                            name = context.getString(R.string.section_signal_icons),
+                            icon = "signal_cellular_alt"
+                        )
+                    )
+                    add(
+                        ThemeCategory(
+                            id = ID_CATEGORY_DATA,
+                            name = context.getString(R.string.section_data_icons),
+                            icon = "data_usage"
+                        )
+                    )
+                    if (catalogThemes.any { it.category == ID_CATEGORY_BATTERY }) {
+                        add(
+                            ThemeCategory(
+                                id = ID_CATEGORY_BATTERY,
+                                name = context.getString(R.string.section_battery_styles),
+                                icon = "battery_full"
+                            )
+                        )
+                    }
+                }
 
                 val knownBaseIds = baseCategories.map { it.id }.toSet()
                 val extraCategories = mergedDiscovered
@@ -171,13 +189,33 @@ class ThemeRepository(private val context: Context) {
                         )
                     }
 
+                val networkCatalog = catalogThemes.filter {
+                    it.category != ID_CATEGORY_BATTERY
+                }
+                val batteryCatalog = catalogThemes.filter { it.category == ID_CATEGORY_BATTERY }
+
                 val (themes, categories) = when (section) {
                     StoreSection.All -> {
                         val combined = catalogThemes + mergedDiscovered
                         Pair(combined, baseCategories + extraCategories)
                     }
-                    StoreSection.NetworkIcons -> Pair(catalogThemes.toList(), baseCategories)
-                    StoreSection.BatteryStyles,
+                    StoreSection.NetworkIcons -> Pair(
+                        networkCatalog,
+                        baseCategories.filter { it.id != ID_CATEGORY_BATTERY },
+                    )
+                    StoreSection.BatteryStyles -> Pair(
+                        batteryCatalog + mergedDiscovered,
+                        buildList {
+                            add(
+                                ThemeCategory(
+                                    id = ID_CATEGORY_BATTERY,
+                                    name = context.getString(R.string.section_battery_styles),
+                                    icon = "battery_full",
+                                )
+                            )
+                            addAll(extraCategories)
+                        },
+                    )
                     StoreSection.BackGesture,
                     StoreSection.ChargingAnimation,
                     StoreSection.StatusBarCustomization,

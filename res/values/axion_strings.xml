@@ -18,6 +18,8 @@
     <string name="wifi_icons_desc">Replace the 5 Wi-Fi signal strength indicators shown in the status bar</string>
     <string name="signal_icons_desc">Replace the 5 cellular signal strength indicators shown in the status bar</string>
     <string name="data_icons_desc">Replace the mobile data type indicators (LTE, 5G, etc.) shown in the status bar</string>
+    <string name="section_battery_styles">Battery styles</string>
+    <string name="battery_styles_desc">Replace the battery icon shape shown in the status bar</string>
     <string name="store_title_all">Theme store</string>
     <string name="store_section_network_icons">Network icons</string>
     <string name="store_section_battery_styles">Battery styles</string>

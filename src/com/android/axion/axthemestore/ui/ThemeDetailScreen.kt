@@ -142,6 +142,7 @@ fun ThemeDetailScreen(
                         ThemeRepository.ID_CATEGORY_WIFI -> stringResource(R.string.wifi_icons_desc)
                         ThemeRepository.ID_CATEGORY_SIGNAL -> stringResource(R.string.signal_icons_desc)
                         ThemeRepository.ID_CATEGORY_DATA -> stringResource(R.string.data_icons_desc)
+                        ThemeRepository.ID_CATEGORY_BATTERY -> stringResource(R.string.battery_styles_desc)
                         else -> ""
                     }
                 }
