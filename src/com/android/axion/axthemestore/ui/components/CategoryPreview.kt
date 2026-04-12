@@ -66,6 +66,8 @@ private data class BatteryShapeSpec(
     val nonUniformScaleYMultiplier: Float = 1f,
     /** Multiplied by min(scaleX, scaleY) for outline stroke width. */
     val strokeWidthFactor: Float = 0.7f,
+    /** Extra scale for theme-card preview only (status bar uses config_batteryMeterSlotScalePercent on device). */
+    val previewScaleMultiplier: Float = 1f,
 )
 
 private val BATTERY_SHAPES = mapOf(
@@ -99,6 +101,7 @@ private val BATTERY_SHAPES = mapOf(
         viewportHeight = 12f,
         fillPathData = "M12.00,11.38Q11.65,11.38,11.43,11.15L8.10,7.80C7.30,6.96,6.72,6.41,6.72,4.78C6.99,1.36,10.13,0.34,12.00,2.89C13.87,0.34,17.01,1.36,17.28,4.78C17.28,6.41,16.70,6.96,15.90,7.80L12.57,11.15Q12.35,11.38,12.00,11.38z",
         strokeWidthFactor = 0.55f,
+        previewScaleMultiplier = 1.95f,
     ),
     "smiley" to BatteryShapeSpec(
         pathData = "M3.76,0.62L18.03,0.62A2.74 2.74 0 0 1 20.78,3.36L20.78,8.64A2.74 2.74 0 0 1 18.03,11.38L3.76,11.38A2.74 2.74 0 0 1 1.02,8.64L1.02,3.36A2.74 2.74 0 0 1 3.76,0.62zM21.66,7.79C23.42,7.68,23.42,4.32,21.66,4.21L21.66,7.79z",
@@ -144,10 +147,10 @@ fun BatteryStylePreview(packageName: String, modifier: Modifier = Modifier) {
             val sx: Float
             val sy: Float
             if (spec.nonUniformScale) {
-                sx = size.width * pad / vw
-                sy = size.height * pad / vh * spec.nonUniformScaleYMultiplier
+                sx = size.width * pad / vw * spec.previewScaleMultiplier
+                sy = size.height * pad / vh * spec.nonUniformScaleYMultiplier * spec.previewScaleMultiplier
             } else {
-                val s = min(size.width / vw, size.height / vh) * 0.64f
+                val s = min(size.width / vw, size.height / vh) * 0.64f * spec.previewScaleMultiplier
                 sx = s
                 sy = s
             }
