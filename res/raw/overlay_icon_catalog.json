@@ -295,6 +295,12 @@
       "label": "Smiley",
       "kind": "battery",
       "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.heart",
+      "label": "Heart",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
     }
   ]
 }

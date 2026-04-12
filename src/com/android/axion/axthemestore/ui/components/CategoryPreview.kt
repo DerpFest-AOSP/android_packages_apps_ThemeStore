@@ -62,6 +62,8 @@ private data class BatteryShapeSpec(
      * Use for tall design boxes that should read as landscape in the status bar.
      */
     val nonUniformScale: Boolean = false,
+    /** When [nonUniformScale] is true, multiplies vertical scale only (values below 1 shorten the preview). */
+    val nonUniformScaleYMultiplier: Float = 1f,
     /** Multiplied by min(scaleX, scaleY) for outline stroke width. */
     val strokeWidthFactor: Float = 0.7f,
 )
@@ -89,6 +91,15 @@ private val BATTERY_SHAPES = mapOf(
         viewportHeight = 12f,
         fillPathData = "M15.25,10.50C12.50,10.57,11.50,10.57,8.75,10.50C7.50,10.40,6.00,9.75,5.50,7.75Q5.12,6.00,5.50,4.50C6.00,3.00,7.50,2.10,8.75,2.00C11.00,1.88,13.00,1.88,15.25,2.00C16.50,2.10,18.00,3.00,18.50,4.50Q18.88,6.00,18.50,7.75C18.00,9.75,16.50,10.40,15.25,10.50z",
     ),
+    /** Upright heart: padded uniform scale, biased up, narrowed horizontally (matches BatteryStyleHeart overlay). */
+    /** No accent in preview — bolt path reads as a second heart when drawn filled; bolt still in overlay. */
+    "heart" to BatteryShapeSpec(
+        pathData = "M12.00,11.38Q11.65,11.38,11.43,11.15L8.10,7.80C7.30,6.96,6.72,6.41,6.72,4.78C6.99,1.36,10.13,0.34,12.00,2.89C13.87,0.34,17.01,1.36,17.28,4.78C17.28,6.41,16.70,6.96,15.90,7.80L12.57,11.15Q12.35,11.38,12.00,11.38z",
+        viewportWidth = 24f,
+        viewportHeight = 12f,
+        fillPathData = "M12.00,11.38Q11.65,11.38,11.43,11.15L8.10,7.80C7.30,6.96,6.72,6.41,6.72,4.78C6.99,1.36,10.13,0.34,12.00,2.89C13.87,0.34,17.01,1.36,17.28,4.78C17.28,6.41,16.70,6.96,15.90,7.80L12.57,11.15Q12.35,11.38,12.00,11.38z",
+        strokeWidthFactor = 0.55f,
+    ),
     "smiley" to BatteryShapeSpec(
         pathData = "M3.76,0.62L18.03,0.62A2.74 2.74 0 0 1 20.78,3.36L20.78,8.64A2.74 2.74 0 0 1 18.03,11.38L3.76,11.38A2.74 2.74 0 0 1 1.02,8.64L1.02,3.36A2.74 2.74 0 0 1 3.76,0.62zM21.66,7.79C23.42,7.68,23.42,4.32,21.66,4.21L21.66,7.79z",
         viewportWidth = 22f,
@@ -103,6 +114,7 @@ private val BATTERY_SHAPES = mapOf(
         viewportHeight = 15f,
         fillPathData = "M1.84,3.43333L1.84,11.56667A2.28,1.9,0,0,0,4.12,13.46667L17.22,13.46667A2.28,1.9,0,0,0,19.5,11.56667L19.5,3.43333A2.28,1.9,0,0,0,17.22,1.53333L4.12,1.53333A2.28,1.9,0,0,0,1.84,3.43333Z",
         nonUniformScale = true,
+        nonUniformScaleYMultiplier = 0.72f,
         strokeWidthFactor = 0.28f,
     ),
 )
@@ -133,7 +145,7 @@ fun BatteryStylePreview(packageName: String, modifier: Modifier = Modifier) {
             val sy: Float
             if (spec.nonUniformScale) {
                 sx = size.width * pad / vw
-                sy = size.height * pad / vh
+                sy = size.height * pad / vh * spec.nonUniformScaleYMultiplier
             } else {
                 val s = min(size.width / vw, size.height / vh) * 0.64f
                 sx = s
