@@ -301,6 +301,12 @@
       "label": "Heart",
       "kind": "battery",
       "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.batteryinverter",
+      "label": "Battery Inverter",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
     }
   ]
 }
