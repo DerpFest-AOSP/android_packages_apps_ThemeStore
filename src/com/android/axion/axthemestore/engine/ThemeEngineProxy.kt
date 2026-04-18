@@ -49,6 +49,8 @@ class ThemeEngineProxy(private val context: Context) {
         object Category {
             const val STATUSBAR_WIFI = "statusbar_wifi"
             const val STATUSBAR_SIGNAL = "statusbar_signal"
+            /** Engine / settings key; mirrors OMS [OMS_DATA_ICON] and short alias "data". */
+            const val STATUSBAR_DATA = "statusbar_data"
 
             /** OMS overlay categories (PackageInfo.overlayCategory). */
             const val OMS_WIFI_ICON = "android.theme.customization.wifi_icon"
@@ -505,8 +507,10 @@ class ThemeEngineProxy(private val context: Context) {
     private fun isEngineMirrorKey(key: String): Boolean =
         key == Category.STATUSBAR_WIFI ||
             key == Category.STATUSBAR_SIGNAL ||
+            key == Category.STATUSBAR_DATA ||
             key == "wifi" ||
-            key == "signal"
+            key == "signal" ||
+            key == "data"
 
     /**
      * All keys persisted for one logical OMS category (OMS + framework lookup aliases).
@@ -515,6 +519,7 @@ class ThemeEngineProxy(private val context: Context) {
         val mirrors = when (category) {
             Category.OMS_SIGNAL_ICON -> listOf(Category.STATUSBAR_SIGNAL, "signal")
             Category.OMS_WIFI_ICON -> listOf(Category.STATUSBAR_WIFI, "wifi")
+            Category.OMS_DATA_ICON -> listOf(Category.STATUSBAR_DATA, "data")
             else -> emptyList()
         }
         return listOf(category) + mirrors
@@ -524,6 +529,7 @@ class ThemeEngineProxy(private val context: Context) {
     private fun primaryOmsCategoryForKey(key: String): String = when (key) {
         Category.STATUSBAR_SIGNAL, "signal" -> Category.OMS_SIGNAL_ICON
         Category.STATUSBAR_WIFI, "wifi" -> Category.OMS_WIFI_ICON
+        Category.STATUSBAR_DATA, "data" -> Category.OMS_DATA_ICON
         else -> key
     }
 
