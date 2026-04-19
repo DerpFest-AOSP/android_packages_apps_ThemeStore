@@ -261,8 +261,20 @@
       "customizationKey": "android.customization.sb_data"
     },
     {
+      "package": "com.android.systemui.battery.batteryinverter",
+      "label": "Battery Inverter",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
       "package": "com.android.systemui.battery.faintui",
       "label": "FaintUI",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.heart",
+      "label": "Heart",
       "kind": "battery",
       "customizationKey": "android.theme.customization.battery_style"
     },
@@ -293,18 +305,6 @@
     {
       "package": "com.android.systemui.battery.smiley",
       "label": "Smiley",
-      "kind": "battery",
-      "customizationKey": "android.theme.customization.battery_style"
-    },
-    {
-      "package": "com.android.systemui.battery.heart",
-      "label": "Heart",
-      "kind": "battery",
-      "customizationKey": "android.theme.customization.battery_style"
-    },
-    {
-      "package": "com.android.systemui.battery.batteryinverter",
-      "label": "Battery Inverter",
       "kind": "battery",
       "customizationKey": "android.theme.customization.battery_style"
     }
