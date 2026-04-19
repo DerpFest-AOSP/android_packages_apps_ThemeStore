@@ -53,6 +53,11 @@ class ThemeRepository(private val context: Context) {
         const val ID_CATEGORY_SIGNAL = "signal_icons"
         const val ID_CATEGORY_DATA = "data_icons"
         const val ID_CATEGORY_BATTERY = StandardComponents.BATTERY_STYLE
+
+        /** Bundled / local RRO packages omitted from the store UI (ROM may still ship them). */
+        private val HIDDEN_FROM_STORE_PACKAGES = setOf(
+            "com.android.systemui.battery.faintui",
+        )
     }
     
     private var cachedResponse: ThemesResponse? = null
@@ -85,6 +90,8 @@ class ThemeRepository(private val context: Context) {
                     val label = o.getString("label")
                     val kind = o.getString("kind")
                     val customizationKey = o.getString("customizationKey")
+
+                    if (packageName in HIDDEN_FROM_STORE_PACKAGES) continue
 
                     val categoryId = when (kind) {
                         "wifi" -> ID_CATEGORY_WIFI
@@ -138,7 +145,10 @@ class ThemeRepository(private val context: Context) {
                         val catalogPackages =
                             catalogThemes.mapNotNull { it.overlays.firstOrNull()?.packageName }.toSet()
                         discovered.filter { theme ->
-                            theme.overlays.firstOrNull()?.packageName !in catalogPackages
+                            val pkg = theme.overlays.firstOrNull()?.packageName
+                            pkg != null &&
+                                pkg !in catalogPackages &&
+                                pkg !in HIDDEN_FROM_STORE_PACKAGES
                         }
                     }
                 } ?: emptyList()
