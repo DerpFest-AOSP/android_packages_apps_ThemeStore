@@ -262,7 +262,6 @@ private fun getCategoryDisplayName(categoryId: String): String {
         "signal" -> "Signal Icons"
         "android.customization.sb_data" -> "Mobile data icons"
         "android.theme.customization.back_gesture", "back_gesture" -> "Back gesture"
-        "android.theme.customization.charging_animation", "charging_animation" -> "Charging animation"
         "android.theme.customization.battery_style", "battery_style" -> "Battery style"
         else -> categoryId.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
@@ -276,7 +275,6 @@ private fun getCategoryIcon(categoryId: String): ImageVector {
         "systemui" -> Icons.Default.SettingsApplications
         "android" -> Icons.Default.Android
         "android.theme.customization.back_gesture", "back_gesture" -> Icons.Default.Gesture
-        "android.theme.customization.charging_animation", "charging_animation" -> Icons.Default.Bolt
         "android.theme.customization.battery_style", "battery_style" -> Icons.Default.BatteryFull
         else -> Icons.Default.Category
     }

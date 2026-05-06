@@ -591,9 +591,6 @@ private fun ThemeListItem(
             val isBackGesture =
                 packageName.contains("back_gesture", ignoreCase = true) ||
                     category.contains("back_gesture", ignoreCase = true)
-            val isChargingAnim =
-                packageName.contains("charging_animation", ignoreCase = true) ||
-                    category.contains("charging_animation", ignoreCase = true)
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -638,20 +635,6 @@ private fun ThemeListItem(
                             contentAlignment = Alignment.Center
                         ) {
                             BackGesturePreview(modifier = Modifier.fillMaxSize())
-                        }
-                    } else if (isChargingAnim) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(shapeFill),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.BatteryChargingFull,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                tint = paletteTint
-                            )
                         }
                     } else if (onDevice && packageName.isNotEmpty()) {
                         if (homepageStyle) {
@@ -798,9 +781,6 @@ private fun CompactThemeCard(
                 val isBackGesture =
                     packageName.contains("back_gesture", ignoreCase = true) ||
                         category.contains("back_gesture", ignoreCase = true)
-                val isChargingAnim =
-                    packageName.contains("charging_animation", ignoreCase = true) ||
-                        category.contains("charging_animation", ignoreCase = true)
                 val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
 
                 when {
@@ -826,19 +806,6 @@ private fun CompactThemeCard(
                     }
                     isBackGesture -> {
                         BackGesturePreview(modifier = Modifier.fillMaxSize())
-                    }
-                    isChargingAnim -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.BatteryChargingFull,
-                                contentDescription = null,
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
                     }
                     onDevice && packageName.isNotEmpty() -> {
                         ThemePackagePreview(
@@ -1011,7 +978,6 @@ private fun browseScreenTitle(section: StoreSection): String {
             StoreSection.NetworkIcons -> R.string.store_section_network_icons
             StoreSection.BatteryStyles -> R.string.store_section_battery_styles
             StoreSection.BackGesture -> R.string.store_section_back_gesture
-            StoreSection.ChargingAnimation -> R.string.store_section_charging_animation
             StoreSection.StatusBarCustomization -> R.string.store_section_status_bar_customization
             StoreSection.All -> R.string.store_title_all
         }

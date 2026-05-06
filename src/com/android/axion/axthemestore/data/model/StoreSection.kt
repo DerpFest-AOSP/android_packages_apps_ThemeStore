@@ -33,12 +33,9 @@ enum class StoreSection {
     /** Back gesture appearance RROs only. */
     BackGesture,
 
-    /** Charging animation RROs only. */
-    ChargingAnimation,
-
     /**
-     * Battery + charging + back gesture in one list (legacy combined shortcut).
-     * Prefer [BatteryStyles], [BackGesture], [ChargingAnimation] for separate Settings entries.
+     * Battery + back gesture in one list (legacy combined shortcut).
+     * Prefer [BatteryStyles] or [BackGesture] for separate Settings entries.
      */
     StatusBarCustomization,
 
@@ -55,7 +52,6 @@ enum class StoreSection {
         All, StatusBarCustomization -> CustomizationOmsAll
         BatteryStyles -> setOf(Oms.BATTERY_STYLE)
         BackGesture -> setOf(Oms.BACK_GESTURE)
-        ChargingAnimation -> setOf(Oms.CHARGING_ANIMATION)
     }
 
     fun isRelevantCategoryKey(key: String): Boolean = when (this) {
@@ -63,7 +59,6 @@ enum class StoreSection {
         NetworkIcons -> key in NetworkCategoryKeys
         BatteryStyles -> key in BatteryCategoryKeys
         BackGesture -> key in BackGestureCategoryKeys
-        ChargingAnimation -> key in ChargingAnimationCategoryKeys
         StatusBarCustomization -> key in CustomizationCategoryKeys
     }
 
@@ -78,10 +73,7 @@ enum class StoreSection {
         /** Launch back-gesture overlays only. */
         const val VALUE_BACK_GESTURE = "back_gesture"
 
-        /** Launch charging-animation overlays only. */
-        const val VALUE_CHARGING_ANIMATION = "charging_animation"
-
-        /** Legacy: all three customization types in one activity. */
+        /** Legacy: battery style and back gesture in one activity. */
         const val VALUE_STATUS_BAR_CUSTOMIZATION = "status_bar_customization"
 
         const val VALUE_ALL = "all"
@@ -92,7 +84,6 @@ enum class StoreSection {
                 VALUE_NETWORK_ICONS -> NetworkIcons
                 VALUE_BATTERY_STYLE -> BatteryStyles
                 VALUE_BACK_GESTURE -> BackGesture
-                VALUE_CHARGING_ANIMATION -> ChargingAnimation
                 VALUE_STATUS_BAR_CUSTOMIZATION -> StatusBarCustomization
                 VALUE_ALL -> All
                 else -> All
@@ -101,13 +92,11 @@ enum class StoreSection {
 
         private object Oms {
             const val BATTERY_STYLE = "android.theme.customization.battery_style"
-            const val CHARGING_ANIMATION = "android.theme.customization.charging_animation"
             const val BACK_GESTURE = "android.theme.customization.back_gesture"
         }
 
         private val CustomizationOmsAll = setOf(
             Oms.BATTERY_STYLE,
-            Oms.CHARGING_ANIMATION,
             Oms.BACK_GESTURE,
         )
 
@@ -131,13 +120,7 @@ enum class StoreSection {
             "back_gesture",
         )
 
-        private val ChargingAnimationCategoryKeys = setOf(
-            Oms.CHARGING_ANIMATION,
-            "charging_animation",
-        )
-
         private val CustomizationCategoryKeys = BatteryCategoryKeys +
-            BackGestureCategoryKeys +
-            ChargingAnimationCategoryKeys
+            BackGestureCategoryKeys
     }
 }

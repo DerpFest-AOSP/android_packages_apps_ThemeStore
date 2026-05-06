@@ -120,6 +120,5 @@ object StandardComponents {
 
     const val ICON_PACK = "icon_pack"
     const val BACK_GESTURE = "back_gesture"
-    const val CHARGING_ANIMATION = "charging_animation"
     const val BATTERY_STYLE = "battery_style"
 }

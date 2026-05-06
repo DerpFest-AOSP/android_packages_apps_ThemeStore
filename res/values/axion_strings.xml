@@ -24,7 +24,6 @@
     <string name="store_section_network_icons">Network icons</string>
     <string name="store_section_battery_styles">Battery styles</string>
     <string name="store_section_back_gesture">Back gesture</string>
-    <string name="store_section_charging_animation">Charging animation</string>
     <string name="store_section_status_bar_customization">Status bar customization</string>
     <string name="no_components_in_section">No active components in this section.</string>
     <string name="bundled_overlay_author">System</string>

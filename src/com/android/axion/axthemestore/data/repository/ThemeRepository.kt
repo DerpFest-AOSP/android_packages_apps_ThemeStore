@@ -36,7 +36,7 @@ import org.json.JSONObject
  * `vendor/overlay` (Icons + themes/battery; see [tools/generate_overlay_icon_catalog.py]). Does not enumerate
  * installed APKs or use the network.
  *
- * Extra RROs (battery / charging / back gesture) are merged per [StoreSection.customizationOmsCategoriesToDiscover].
+ * Extra RROs (battery / back gesture) are merged per [StoreSection.customizationOmsCategoriesToDiscover].
  */
 class ThemeRepository(private val context: Context) {
     
@@ -227,7 +227,6 @@ class ThemeRepository(private val context: Context) {
                         },
                     )
                     StoreSection.BackGesture,
-                    StoreSection.ChargingAnimation,
                     StoreSection.StatusBarCustomization,
                     -> Pair(mergedDiscovered, extraCategories)
                 }

@@ -256,7 +256,6 @@ private fun categoryIcon(theme: Theme): ImageVector {
         theme.overlays.firstOrNull()?.componentId ?: ""
     }
     return when {
-        "charging" in category.lowercase() -> Icons.Default.BatteryChargingFull
         "battery" in category.lowercase() -> Icons.Default.BatteryFull
         "wifi" in category.lowercase() -> Icons.Default.Wifi
         "signal" in category.lowercase() -> Icons.Default.SignalCellularAlt

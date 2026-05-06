@@ -42,7 +42,6 @@ class ThemeEngineProxy(private val context: Context) {
             "android.theme.customization.icon_pack.android",
             "android.theme.customization.icon_pack.systemui",
             "android.theme.customization.back_gesture",
-            "android.theme.customization.charging_animation",
             "android.theme.customization.battery_style",
         )
 

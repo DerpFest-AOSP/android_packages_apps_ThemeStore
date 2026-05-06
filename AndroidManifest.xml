@@ -20,8 +20,7 @@
              network_icons — Wi‑Fi / signal / data catalog only;
              battery_style — battery shape overlays only;
              back_gesture — back gesture overlays only;
-             charging_animation — charging animation overlays only;
-             status_bar_customization — all three customization types in one screen (legacy);
+             status_bar_customization — battery style and back gesture in one screen (legacy);
              all or omit — full store (default).
         -->
         <activity

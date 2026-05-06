@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
             StoreSection.NetworkIcons -> R.string.store_section_network_icons
             StoreSection.BatteryStyles -> R.string.store_section_battery_styles
             StoreSection.BackGesture -> R.string.store_section_back_gesture
-            StoreSection.ChargingAnimation -> R.string.store_section_charging_animation
             StoreSection.StatusBarCustomization -> R.string.store_section_status_bar_customization
             StoreSection.All -> R.string.store_title_all
         }

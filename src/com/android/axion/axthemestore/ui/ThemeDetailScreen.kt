@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
@@ -52,7 +51,6 @@ import com.android.axion.axthemestore.data.model.formatFileSize
 import com.android.axion.axthemestore.data.repository.ThemeRepository
 import com.android.axion.axthemestore.ui.components.BackGesturePreview
 import com.android.axion.axthemestore.ui.components.BatteryStylePreview
-import com.android.axion.axthemestore.ui.components.ChargingAnimationBannerPreview
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
@@ -369,7 +367,6 @@ private fun getComponentDisplayName(componentId: String): String {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi icons"
         "android.theme.customization.signal_icon" -> "Signal icons"
         "android.theme.customization.back_gesture" -> "Back gesture"
-        "android.theme.customization.charging_animation" -> "Charging animation"
         "android.theme.customization.battery_style" -> "Battery style"
         "android.customization.sb_data" -> "Mobile data icons"
         "statusbar_wifi", "wifi" -> "WiFi Icons"
@@ -388,7 +385,6 @@ private fun getComponentDescription(componentId: String): String {
         "android.theme.customization.wifi_icon" -> "Wi‑Fi strength indicators in the status bar"
         "android.theme.customization.signal_icon" -> "Cellular signal indicators in the status bar"
         "android.theme.customization.back_gesture" -> "Back navigation gesture appearance"
-        "android.theme.customization.charging_animation" -> "Animation shown while charging"
         "android.theme.customization.battery_style" -> "Battery icon shape in the status bar"
         "android.customization.sb_data" -> "Network type labels (LTE, 5G, etc.) next to the signal icon"
         "statusbar_wifi", "wifi" -> "WiFi signal indicators in status bar"
@@ -576,32 +572,20 @@ private fun DetailPreviewBox(theme: Theme) {
         }
     } else emptyList()
 
-    val isChargingAnim =
-        packageName.contains("charging_animation", ignoreCase = true) ||
-            category.contains("charging_animation", ignoreCase = true)
-    val bgModifier = if (isChargingAnim) {
-        Modifier.background(Color.Black)
-    } else {
-        Modifier.background(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                    MaterialTheme.colorScheme.surfaceContainer
-                )
-            )
-        )
-    }
     Box(
-        modifier = Modifier.fillMaxSize().then(bgModifier),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        MaterialTheme.colorScheme.surfaceContainer
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         when {
-            isChargingAnim -> {
-                ChargingAnimationBannerPreview(
-                    packageName = packageName,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
             packageName.contains("battery", ignoreCase = true) ||
                 category.contains("battery", ignoreCase = true) -> {
                 BatteryStylePreview(

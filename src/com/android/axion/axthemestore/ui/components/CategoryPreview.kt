@@ -20,35 +20,21 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.PathParser
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.android.axion.axthemestore.R
 import kotlin.math.min
 
 private data class BatteryShapeSpec(
@@ -237,135 +223,5 @@ private fun DrawScope.drawDotTrail(color: Color) {
         val yPos = scaledY * ratio
         drawCircle(color, radius = r, center = Offset(xPos, cy + yPos))
         drawCircle(color, radius = r, center = Offset(xPos, cy - yPos))
-    }
-}
-
-@Composable
-private fun MotoChargingPreview(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "moto_progress")
-    val progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 100f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2500, easing = LinearEasing)
-        ),
-        label = "progress"
-    )
-
-    val arcColor = Color(0xFF1C6AFF)
-    val thinRingColor = Color(0xFF1C6AFF).copy(alpha = 0.35f)
-    val textColor = Color.White
-
-    Box(
-        modifier = modifier.background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.preview_charging_moto_bg),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-        )
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val squareSide = min(size.width, size.height) * 0.62f
-            val left = (size.width - squareSide) / 2f
-            val top = (size.height - squareSide) / 2f
-
-            val thinInset = squareSide * 0.06f
-            val arcLeft = left + thinInset
-            val arcTop = top + thinInset
-            val arcSize = Size(squareSide - thinInset * 2f, squareSide - thinInset * 2f)
-
-            drawArc(
-                color = thinRingColor,
-                startAngle = 97.5f,
-                sweepAngle = 345f,
-                useCenter = false,
-                topLeft = Offset(arcLeft, arcTop),
-                size = arcSize,
-                style = Stroke(width = 3f, cap = StrokeCap.Round)
-            )
-
-            val sweepAngle = progress / 100f * 345f
-            drawArc(
-                color = arcColor,
-                startAngle = 97.5f,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                topLeft = Offset(arcLeft, arcTop),
-                size = arcSize,
-                style = Stroke(width = squareSide * 0.09f, cap = StrokeCap.Round)
-            )
-
-            drawIntoCanvas { canvas ->
-                val textPaint = Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = squareSide * 0.28f
-                    isFakeBoldText = true
-                    isAntiAlias = true
-                    textAlign = Paint.Align.CENTER
-                }
-                val percentPaint = Paint().apply {
-                    color = textColor.copy(alpha = 0.7f).toArgb()
-                    textSize = squareSide * 0.11f
-                    isAntiAlias = true
-                    textAlign = Paint.Align.CENTER
-                }
-                val cx = size.width / 2f
-                val cy = size.height / 2f
-                val level = progress.toInt()
-                canvas.nativeCanvas.drawText("$level", cx, cy + textPaint.textSize * 0.35f, textPaint)
-                canvas.nativeCanvas.drawText("%", cx + squareSide * 0.17f, cy - textPaint.textSize * 0.1f, percentPaint)
-            }
-        }
-    }
-}
-
-private val NOTHING_FRAMES = listOf(
-    R.drawable.preview_charging_nothing_ripple_01,
-    R.drawable.preview_charging_nothing_ripple_05,
-    R.drawable.preview_charging_nothing_ripple_09,
-    R.drawable.preview_charging_nothing_ripple_13,
-    R.drawable.preview_charging_nothing_ripple_17,
-    R.drawable.preview_charging_nothing_ripple_20,
-    R.drawable.preview_charging_nothing_ripple_25,
-    R.drawable.preview_charging_nothing_ripple_29,
-    R.drawable.preview_charging_nothing_ripple_33,
-    R.drawable.preview_charging_nothing_ripple_37,
-    R.drawable.preview_charging_nothing_ripple_41,
-)
-
-
-@Composable
-fun ChargingAnimationBannerPreview(packageName: String, modifier: Modifier = Modifier) {
-    val style = packageName.substringAfterLast('.')
-    if (style == "moto") {
-        MotoChargingPreview(modifier = modifier)
-        return
-    }
-    if (style != "nothing") return
-
-    val frameCount = NOTHING_FRAMES.size
-    val infiniteTransition = rememberInfiniteTransition(label = "charging_anim")
-    val animatedIndex by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = frameCount.toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = frameCount * 80, easing = LinearEasing)
-        ),
-        label = "frame_index"
-    )
-    val frameIndex = animatedIndex.toInt().coerceIn(0, frameCount - 1)
-
-    Box(
-        modifier = modifier.background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(NOTHING_FRAMES[frameIndex]),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-        )
     }
 }
