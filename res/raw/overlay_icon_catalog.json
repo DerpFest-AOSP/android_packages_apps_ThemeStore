@@ -1,0 +1,618 @@
+{
+  "version": 1,
+  "generatedNote": "Regenerate with tools/generate_overlay_icon_catalog.py",
+  "entries": [
+    {
+      "package": "com.android.systemui.wifibar_l",
+      "label": "Acherus",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsWifiG",
+      "label": "Acherus G",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsWifiT",
+      "label": "Acherus T",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_h",
+      "label": "Bars",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_j",
+      "label": "Dora",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.wifiGradicon",
+      "label": "Gradicon",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.wifiHollow",
+      "label": "Hollow",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_g",
+      "label": "Inside",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.LivWifi",
+      "label": "Liv",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.custom.systemui.wifiNothingDot",
+      "label": "NothingDoT",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.wifibar_m",
+      "label": "Pavlova UI",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_f",
+      "label": "Round",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_b",
+      "label": "Sneaky",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_a",
+      "label": "Stroke",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_e",
+      "label": "Wavy",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_i",
+      "label": "Weed",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_c",
+      "label": "Xperia",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.derp.systemui.wifibar_d",
+      "label": "Zig-Zag",
+      "kind": "wifi",
+      "customizationKey": "android.theme.customization.wifi_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_l",
+      "label": "Acherus",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsSignalG",
+      "label": "Acherus G",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.AcherusSubsSignalT",
+      "label": "Acherus T",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_h",
+      "label": "Bars",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.signalGradicon",
+      "label": "Gradicon",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.overlay.systemui.signalHollow",
+      "label": "Hollow",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_g",
+      "label": "Inside",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_ios",
+      "label": "Ios",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.LivSignal",
+      "label": "Liv",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.custom.systemui.signalNothingDot",
+      "label": "NothingDoT",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_odinee",
+      "label": "Odinee",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_m",
+      "label": "Pavlova UI",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_f",
+      "label": "Round",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_b",
+      "label": "Sneaky",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_a",
+      "label": "Stroke",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_wanna",
+      "label": "Wanna",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_e",
+      "label": "Wavy",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.systemui.signalbar_windows",
+      "label": "Windows",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_c",
+      "label": "Xperia",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.derp.systemui.signalbar_d",
+      "label": "Zig-Zag",
+      "kind": "signal",
+      "customizationKey": "android.theme.customization.signal_icon"
+    },
+    {
+      "package": "com.android.theme.icon_pack.acherus.android",
+      "label": "Acherus",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.acherus.settings",
+      "label": "Acherus",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.acherus.systemui",
+      "label": "Acherus",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.aurora.android",
+      "label": "Aurora",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.aurora.systemui",
+      "label": "Aurora",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.circular.android",
+      "label": "Circular",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.circular.launcher",
+      "label": "Circular",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.circular.settings",
+      "label": "Circular",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.circular.systemui",
+      "label": "Circular",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.faintui.android",
+      "label": "Faint UI",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.faintui.systemui",
+      "label": "Faint UI",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.filled.android",
+      "label": "Filled",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.filled.launcher",
+      "label": "Filled",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.filled.settings",
+      "label": "Filled",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.filled.systemui",
+      "label": "Filled",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.gradicon.android",
+      "label": "Gradicon",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.gradicon.systemui",
+      "label": "Gradicon",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.kai.android",
+      "label": "Kai",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.kai.launcher",
+      "label": "Kai",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.kai.settings",
+      "label": "Kai",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.kai.systemui",
+      "label": "Kai",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.lorn.android",
+      "label": "Lorn",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.lorn.systemui",
+      "label": "Lorn",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.nostalgic.android",
+      "label": "Nostalgic",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.nostalgic.launcher",
+      "label": "Nostalgic",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.nostalgic.settings",
+      "label": "Nostalgic",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.nostalgic.systemui",
+      "label": "Nostalgic",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.nostalgic.themepicker",
+      "label": "Nostalgic",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.themepicker"
+    },
+    {
+      "package": "com.android.theme.icon_pack.outline.android",
+      "label": "Outline",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.outline.settings",
+      "label": "Outline",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.outline.systemui",
+      "label": "Outline",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.oos.android",
+      "label": "OxygenOS",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.oos.launcher",
+      "label": "OxygenOS",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.oos.settings",
+      "label": "OxygenOS",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.oos.systemui",
+      "label": "OxygenOS",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.pui.android",
+      "label": "Pavlova UI",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.plumpy.android",
+      "label": "Plumpy",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.plumpy.systemui",
+      "label": "Plumpy",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.pui.launcher",
+      "label": "Pui",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.pui.settings",
+      "label": "Pui",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.pui.systemui",
+      "label": "Pui",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.rounded.android",
+      "label": "Rounded",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.rounded.launcher",
+      "label": "Rounded",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.rounded.settings",
+      "label": "Rounded",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.rounded.systemui",
+      "label": "Rounded",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.sam.android",
+      "label": "Sam",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.sam.launcher",
+      "label": "Sam",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.sam.settings",
+      "label": "Sam",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.sam.systemui",
+      "label": "Sam",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.victor.android",
+      "label": "Victor",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.victor.launcher",
+      "label": "Victor",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.launcher"
+    },
+    {
+      "package": "com.android.theme.icon_pack.victor.settings",
+      "label": "Victor",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.victor.systemui",
+      "label": "Victor",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.theme.icon_pack.xperia.android",
+      "label": "Xperia",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.android"
+    },
+    {
+      "package": "com.android.theme.icon_pack.xperia.settings",
+      "label": "Xperia",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.settings"
+    },
+    {
+      "package": "com.android.theme.icon_pack.xperia.systemui",
+      "label": "Xperia",
+      "kind": "iconpack",
+      "customizationKey": "android.theme.customization.icon_pack.systemui"
+    },
+    {
+      "package": "com.android.systemui.battery.batteryinverter",
+      "label": "Battery Inverter",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.faintui",
+      "label": "FaintUI",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.heart",
+      "label": "Heart",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.ios15",
+      "label": "iOS 15",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.ios16",
+      "label": "iOS 16",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.oneui7",
+      "label": "OneUI 7",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.origami",
+      "label": "Origami",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    },
+    {
+      "package": "com.android.systemui.battery.smiley",
+      "label": "Smiley",
+      "kind": "battery",
+      "customizationKey": "android.theme.customization.battery_style"
+    }
+  ]
+}

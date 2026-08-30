@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +15,24 @@
  * limitations under the License.
  */
 
-@file:OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalMaterial3ExpressiveApi::class,
-    ExperimentalGlideComposeApi::class,
-)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package com.android.axion.axthemestore.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.*
-import androidx.compose.foundation.pager.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
@@ -57,29 +51,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
-import com.android.axion.axthemestore.data.model.ThemeInstallState
+import com.android.axion.axthemestore.data.model.ThemeSelectionState
 import com.android.axion.axthemestore.engine.ThemeEngineProxy
-import com.android.axion.axthemestore.ui.components.AsyncNetworkImage
-import com.android.axion.axthemestore.ui.components.ChargingAnimationBannerPreview
-import com.android.axion.axthemestore.ui.components.UdfpsAnimationBannerPreview
 import com.android.axion.axthemestore.ui.components.BackGesturePreview
 import com.android.axion.axthemestore.ui.components.BatteryStylePreview
-import com.android.axion.axthemestore.ui.components.ImagePlaceholder
+import com.android.axion.axthemestore.ui.components.ThemeCard
 import com.android.axion.axthemestore.ui.components.ThemePackagePreview
 import com.android.axion.axthemestore.viewmodel.ThemeStoreUiState
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
-import com.android.axion.axthemestore.data.ThumbnailPreloader
-import com.android.axion.compose.scaffold.AxionScaffold
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
-internal val LocalUdfpsSupported = staticCompositionLocalOf { true }
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeStoreScreen(
     viewModel: ThemeStoreViewModel,
@@ -93,36 +77,46 @@ fun ThemeStoreScreen(
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     
-    if (isSearchActive) {
-        SearchScreen(
-            viewModel = viewModel,
-            searchQuery = searchQuery,
-            onSearchChange = { 
-                searchQuery = it
-                viewModel.searchThemes(it)
-            },
-            onBack = { 
-                isSearchActive = false
-                searchQuery = ""
-                viewModel.searchThemes("")
-            },
-            themes = viewModel.getFilteredThemes(),
-            themeStates = themeStates,
-            onThemeClick = onThemeClick
-        )
-    } else {
-        BrowseScreen(
-            uiState = uiState,
-            themeStates = themeStates,
-            onSearchClick = { isSearchActive = true },
-            onRefresh = { viewModel.loadThemes(forceRefresh = true) },
-            onThemeClick = onThemeClick,
-            onNavigateToCategory = onNavigateToCategory,
-            onNavigateToInstalledComponents = onNavigateToInstalledComponents
-        )
+    Scaffold { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isSearchActive) {
+                SearchScreen(
+                    viewModel = viewModel,
+                    searchQuery = searchQuery,
+                    onSearchChange = { 
+                        searchQuery = it
+                        viewModel.searchThemes(it)
+                    },
+                    onBack = { 
+                        isSearchActive = false
+                        searchQuery = ""
+                        viewModel.searchThemes("")
+                    },
+                    themes = viewModel.getFilteredThemes(),
+                    themeStates = themeStates,
+                    onThemeClick = onThemeClick
+                )
+            } else {
+                BrowseScreen(
+                    uiState = uiState,
+                    themeStates = themeStates,
+                    onSearchClick = { isSearchActive = true },
+                    onRefresh = { viewModel.loadThemes(forceRefresh = true) },
+                    onThemeClick = onThemeClick,
+                    onNavigateToCategory = onNavigateToCategory,
+
+                    onNavigateToInstalledComponents = onNavigateToInstalledComponents
+                )
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryThemesScreen(
     categoryId: String,
@@ -134,81 +128,69 @@ fun CategoryThemesScreen(
     val themeStates by viewModel.themeStates.collectAsStateWithLifecycle()
     
     val category = uiState.categories.find { it.id == categoryId }
-    val categoryName = when (categoryId) {
-        "installed" -> stringResource(R.string.installed)
-        else -> category?.name ?: "Themes"
+    val categoryName = category?.name ?: "Themes"
+    
+    val categoryThemes = if (categoryId == "local") {
+        uiState.themes.filter { it.isLocal }
+    } else {
+        uiState.themes.filter { it.category == categoryId }
     }
-
-    val drillData by produceState<DrillDownData?>(null, uiState.themes, themeStates, categoryId) {
-        value = null
-        val start = System.currentTimeMillis()
-        val computed = withContext(Dispatchers.Default) {
-            val source = when (categoryId) {
-                "installed" -> uiState.themes.filter { theme ->
-                    val s = themeStates[theme.id]
-                    s is ThemeInstallState.Installed ||
-                            s is ThemeInstallState.InstalledInactive ||
-                            theme.isLocal
-                }
-                "local" -> uiState.themes.filter { it.isLocal }
-                else -> uiState.themes.filter { it.category == categoryId }
-            }
-            val sorted = source.sortedWith(
-                compareByDescending<Theme> { themeStates[it.id] is ThemeInstallState.Installed }
-                    .thenBy { it.name.lowercase() }
-            )
-            val grouped = sorted.groupBy { it.pack }
-            DrillDownData(
-                ungrouped = grouped[null].orEmpty(),
-                packs = grouped.filterKeys { it != null }.toSortedMap(compareBy { it!!.lowercase() }),
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { 
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
-        val elapsed = System.currentTimeMillis() - start
-        if (elapsed < 600) delay(600 - elapsed)
-        value = computed
-    }
-
-    AxionScaffold(
-        title = categoryName,
-        onBackClick = onBackClick,
-        containerColor = MaterialTheme.colorScheme.surfaceBright,
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Crossfade(
-                targetState = drillData,
-                label = "drill_down_transition",
-                modifier = Modifier.fillMaxSize(),
-            ) { data ->
-                when {
-                    uiState.isLoading -> LoadingState()
-                    uiState.error != null -> ErrorState(
+            when {
+                uiState.isLoading -> {
+                    LoadingState()
+                }
+                uiState.error != null -> {
+                    ErrorState(
                         message = uiState.error!!,
-                        onRetry = { viewModel.loadThemes(forceRefresh = true) },
+                        onRetry = { viewModel.loadThemes(forceRefresh = true) }
                     )
-                    data == null -> LoadingState()
-                    data.isEmpty -> EmptyState(isSearching = false)
-                    else -> Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                }
+                categoryThemes.isEmpty() -> {
+                    EmptyState(isSearching = false)
+                }
+                else -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        ThemeItemRows(
-                            themes = data.ungrouped,
-                            themeStates = themeStates,
-                            onThemeClick = onThemeClick,
-                        )
-                        data.packs.forEach { (pack, packThemes) ->
-                            PackHeader(pack!!)
-                            ThemeItemRows(
-                                themes = packThemes,
-                                themeStates = themeStates,
-                                onThemeClick = onThemeClick,
+                        items(categoryThemes, key = { it.id }) { theme ->
+                            ThemeCard(
+                                theme = theme,
+                                selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
+                                onClick = { onThemeClick(theme) }
                             )
                         }
                     }
@@ -218,6 +200,7 @@ fun CategoryThemesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchScreen(
     viewModel: ThemeStoreViewModel,
@@ -225,18 +208,12 @@ private fun SearchScreen(
     onSearchChange: (String) -> Unit,
     onBack: () -> Unit,
     themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
+    themeStates: Map<String, ThemeSelectionState>,
     onThemeClick: (Theme) -> Unit
 ) {
     val focusRequester = remember { FocusRequester() }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceBright)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -302,7 +279,7 @@ private fun SearchScreen(
                 items(themes, key = { it.id }) { theme ->
                     ThemeListItem(
                         theme = theme,
-                        installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
+                        selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
                         onClick = { onThemeClick(theme) }
                     )
                 }
@@ -401,159 +378,120 @@ private fun SearchScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BrowseScreen(
     uiState: ThemeStoreUiState,
-    themeStates: Map<String, ThemeInstallState>,
+    themeStates: Map<String, ThemeSelectionState>,
     onSearchClick: () -> Unit,
     onRefresh: () -> Unit,
     onThemeClick: (Theme) -> Unit,
     onNavigateToCategory: (String) -> Unit,
-    onNavigateToInstalledComponents: () -> Unit,
+
+    onNavigateToInstalledComponents: () -> Unit
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceBright,
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.themes),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                actions = {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = browseScreenTitle(uiState.storeSection),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                shape = MaterialTheme.shapes.large,
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onNavigateToInstalledComponents) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = stringResource(R.string.installed_components)
+                        )
+                    }
+
                     IconButton(onClick = onSearchClick) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = stringResource(R.string.search),
+                            contentDescription = stringResource(R.string.search)
                         )
                     }
+
                     IconButton(onClick = onRefresh) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(R.string.refresh),
+                            contentDescription = stringResource(R.string.refresh)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceBright,
-                ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when {
-                uiState.isLoading -> LoadingState()
-                uiState.error != null -> ErrorState(
+                }
+            }
+        }
+        
+        when {
+            uiState.isLoading -> {
+                LoadingState()
+            }
+            uiState.error != null -> {
+                ErrorState(
                     message = uiState.error!!,
-                    onRetry = onRefresh,
-                )
-                uiState.themes.isEmpty() -> EmptyState(isSearching = false)
-                else -> DashboardContent(
-                    uiState = uiState,
-                    themeStates = themeStates,
-                    onThemeClick = onThemeClick,
-                    onNavigateToCategory = onNavigateToCategory,
+                    onRetry = onRefresh
                 )
             }
-        }
-    }
-}
-
-private const val RAIL_LIMIT = 6
-private const val SECTION_LIMIT = 9
-private val RAIL_CARD_WIDTH = 120.dp
-
-private data class DrillDownData(
-    val ungrouped: List<Theme>,
-    val packs: Map<String?, List<Theme>>,
-) {
-    val isEmpty: Boolean get() = ungrouped.isEmpty() && packs.isEmpty()
-}
-
-private data class ThemePreviewMeta(
-    val packageName: String,
-    val isBattery: Boolean,
-    val isBackGesture: Boolean,
-    val isChargingAnim: Boolean,
-    val isUdfpsAnim: Boolean,
-    val isUdfpsIcon: Boolean,
-)
-
-@Composable
-private fun DashboardContent(
-    uiState: ThemeStoreUiState,
-    themeStates: Map<String, ThemeInstallState>,
-    onThemeClick: (Theme) -> Unit,
-    onNavigateToCategory: (String) -> Unit,
-) {
-    val themesByCategory = remember(uiState.themes, themeStates) {
-        uiState.themes.groupBy { it.category }
-            .mapValues { (_, list) -> 
-                list.sortedWith(
-                    compareByDescending<Theme> { themeStates[it.id] is ThemeInstallState.Installed }
-                        .thenBy { it.name.lowercase() }
-                )
+            else -> {
+                if (uiState.themes.isEmpty()) {
+                    EmptyState(isSearching = false)
+                } else {
+                    val themesByCategory = uiState.themes.groupBy { it.category }
+                    
+                    val appliedThemes = uiState.themes.filter { theme ->
+                        themeStates[theme.id] is ThemeSelectionState.Active
+                    }
+                    
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (appliedThemes.isNotEmpty()) {
+                            item {
+                                ThemeSection(
+                                    title = stringResource(R.string.section_currently_applied),
+                                    themes = appliedThemes,
+                                    themeStates = themeStates,
+                                    onThemeClick = onThemeClick
+                                )
+                            }
+                        }
+                        
+                        uiState.categories.forEach { category ->
+                            val categoryThemes = themesByCategory[category.id] ?: emptyList()
+                            if (categoryThemes.isNotEmpty()) {
+                                item {
+                                    ThemeSection(
+                                        title = category.name,
+                                        themes = categoryThemes,
+                                        themeStates = themeStates,
+                                        onThemeClick = onThemeClick
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
-    }
-    val installedThemes = remember(uiState.themes, themeStates) {
-        uiState.themes.filter { theme ->
-            val s = themeStates[theme.id]
-            s is ThemeInstallState.Installed ||
-                    s is ThemeInstallState.InstalledInactive ||
-                    theme.isLocal
-        }.sortedWith(
-            compareByDescending<Theme> { themeStates[it.id] is ThemeInstallState.Installed }
-                .thenBy { it.name.lowercase() }
-        )
-    }
-    val featuredThemes = remember(uiState.themes) {
-        uiState.themes.shuffled().take(RAIL_LIMIT)
-    }
-    val categoriesWithThemes = remember(uiState.categories, themesByCategory) {
-        uiState.categories.filter { cat -> (themesByCategory[cat.id] ?: emptyList()).isNotEmpty() }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 8.dp),
-    ) {
-        if (featuredThemes.isNotEmpty()) {
-            FeaturedCarousel(
-                themes = featuredThemes,
-                onThemeClick = onThemeClick,
-            )
-        }
-        if (installedThemes.isNotEmpty()) {
-            ThemeSection(
-                title = stringResource(R.string.installed),
-                themes = installedThemes.take(SECTION_LIMIT),
-                themeStates = themeStates,
-                onThemeClick = onThemeClick,
-                onSeeAll = if (installedThemes.size > SECTION_LIMIT) {
-                    { onNavigateToCategory("installed") }
-                } else null,
-            )
-        }
-        categoriesWithThemes.forEach { cat ->
-            val catThemes = themesByCategory[cat.id].orEmpty()
-            ThemeSection(
-                title = cat.name,
-                themes = catThemes.take(SECTION_LIMIT),
-                themeStates = themeStates,
-                onThemeClick = onThemeClick,
-                onSeeAll = if (catThemes.size > SECTION_LIMIT) {
-                    { onNavigateToCategory(cat.id) }
-                } else null,
-            )
         }
     }
 }
@@ -562,34 +500,54 @@ private fun DashboardContent(
 private fun ThemeSection(
     title: String,
     themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
-    onThemeClick: (Theme) -> Unit,
-    onSeeAll: (() -> Unit)?,
+    themeStates: Map<String, ThemeSelectionState>,
+    onThemeClick: (Theme) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 16.dp),
+            .padding(bottom = 16.dp)
     ) {
-        SectionHeader(title = title, onSeeAll = onSeeAll)
-        Row(
+        Text(
+            text = title,
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 8.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        val chunkedThemes = themes.chunked(3)
+
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            ),
+            shape = MaterialTheme.shapes.large,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            themes.chunked(3).forEach { chunk ->
-                Column(
-                    modifier = Modifier.width(280.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    chunk.forEach { theme ->
-                        ThemeListItem(
-                            theme = theme,
-                            installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
-                            onClick = { onThemeClick(theme) },
-                        )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(chunkedThemes.size) { chunkIndex ->
+                    val chunk = chunkedThemes[chunkIndex]
+                    Column(
+                        modifier = Modifier.width(280.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        chunk.forEach { theme ->
+                            ThemeListItem(
+                                theme = theme,
+                                selectionState = themeStates[theme.id] ?: ThemeSelectionState.Inactive,
+                                onClick = { onThemeClick(theme) },
+                                homepageStyle = true
+                            )
+                        }
                     }
                 }
             }
@@ -598,324 +556,27 @@ private fun ThemeSection(
 }
 
 @Composable
-private fun FeaturedCarousel(
-    themes: List<Theme>,
-    onThemeClick: (Theme) -> Unit,
-) {
-    if (themes.isEmpty()) return
-    val pagerState = rememberPagerState(pageCount = { themes.size })
-    LaunchedEffect(themes) {
-        while (themes.size > 1) {
-            delay(5000)
-            val next = (pagerState.currentPage + 1) % themes.size
-            pagerState.animateScrollToPage(next)
-        }
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            pageSpacing = 12.dp,
-        ) { page ->
-            FeaturedCard(theme = themes[page], onClick = { onThemeClick(themes[page]) })
-        }
-        if (themes.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                repeat(themes.size) { index ->
-                    val selected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(if (selected) 8.dp else 6.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outlineVariant
-                            ),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FeaturedCard(theme: Theme, onClick: () -> Unit) {
-    val gradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer,
-            MaterialTheme.colorScheme.tertiaryContainer,
-            MaterialTheme.colorScheme.secondaryContainer,
-        ),
-    )
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(20.dp))
-            .background(gradient)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-    ) {
-        ThemePreviewBox(theme = theme, transparentBg = true)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomStart)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                    )
-                )
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        ) {
-            Column {
-                Text(
-                    text = theme.name,
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (theme.author.isNotEmpty()) {
-                    Text(
-                        text = theme.author,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, onSeeAll: (() -> Unit)?) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLargeEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
-        )
-        if (onSeeAll != null) {
-            TextButton(onClick = onSeeAll) {
-                Text(stringResource(R.string.see_all))
-            }
-        }
-    }
-}
-
-@Composable
-private fun RailThemeCard(
-    theme: Theme,
-    installState: ThemeInstallState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier.width(RAIL_CARD_WIDTH),
-) {
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.large),
-        ) {
-            ThemePreviewBox(theme = theme)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = theme.name,
-            style = MaterialTheme.typography.titleSmallEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
-        )
-        val stateText = when (installState) {
-            is ThemeInstallState.Installed -> stringResource(R.string.active)
-            is ThemeInstallState.InstalledInactive -> stringResource(R.string.installed)
-            else -> theme.author
-        }
-        Text(
-            text = stateText,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-        )
-    }
-}
-
-@Composable
-private fun ThemePreviewBox(theme: Theme, transparentBg: Boolean = false) {
-    val context = LocalContext.current
-    val previewMeta = remember(theme.id) {
-        val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
-        val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
-        ThemePreviewMeta(
-            packageName = packageName,
-            isBattery = packageName.contains("battery") || category.contains("battery"),
-            isBackGesture = packageName.contains("back_gesture") || category.contains("back_gesture"),
-            isChargingAnim = packageName.contains("charging_animation") || category.contains("charging_animation"),
-            isUdfpsAnim = packageName.contains("udfps_animation") || category.contains("udfps_animation"),
-            isUdfpsIcon = packageName.contains("udfps_icon") || category.contains("udfps_icon"),
-        )
-    }
-    val packageName = previewMeta.packageName
-    val isBattery = previewMeta.isBattery
-    val isBackGesture = previewMeta.isBackGesture
-    val isChargingAnim = previewMeta.isChargingAnim
-    val isUdfpsAnim = previewMeta.isUdfpsAnim && LocalUdfpsSupported.current
-    val isUdfpsIcon = previewMeta.isUdfpsIcon && LocalUdfpsSupported.current
-    val previewResIds = remember(packageName) { getLocalPreviewResIds(context, packageName) }
-
-    val bgModifier = if (transparentBg) Modifier else Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(bgModifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            previewResIds.isNotEmpty() -> {
-                Image(
-                    painter = painterResource(previewResIds.first()),
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
-                )
-            }
-            isBattery -> BatteryStylePreview(packageName, Modifier.fillMaxSize())
-            isBackGesture -> BackGesturePreview(Modifier.fillMaxSize())
-            isChargingAnim -> ChargingAnimationBannerPreview(
-                packageName = packageName,
-                modifier = Modifier.fillMaxSize(),
-                animate = false,
-            )
-            isUdfpsAnim -> UdfpsAnimationBannerPreview(
-                packageName = packageName,
-                modifier = Modifier.fillMaxSize(),
-                animate = false,
-            )
-            isUdfpsIcon -> {
-                if (theme.previewImages.isNotEmpty()) {
-                    AsyncNetworkImage(
-                        url = theme.previewImages.first(),
-                        contentDescription = theme.name,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.size(40.dp),
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Fingerprint,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
-            theme.previewImages.isNotEmpty() -> AsyncNetworkImage(
-                url = theme.previewImages.first(),
-                contentDescription = theme.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            else -> Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ThemeItemRows(
-    themes: List<Theme>,
-    themeStates: Map<String, ThemeInstallState>,
-    onThemeClick: (Theme) -> Unit,
-) {
-    themes.chunked(3).forEach { rowThemes ->
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            rowThemes.forEach { theme ->
-                RailThemeCard(
-                    theme = theme,
-                    installState = themeStates[theme.id] ?: ThemeInstallState.NotInstalled,
-                    onClick = { onThemeClick(theme) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            repeat(3 - rowThemes.size) {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun PackHeader(name: String) {
-    Text(
-        text = name,
-        style = MaterialTheme.typography.titleMediumEmphasized,
-        color = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
 private fun ThemeListItem(
     theme: Theme,
-    installState: ThemeInstallState,
-    onClick: () -> Unit
+    selectionState: ThemeSelectionState,
+    onClick: () -> Unit,
+    homepageStyle: Boolean = false
 ) {
-    Box(
+    val shapeFill = MaterialTheme.colorScheme.surfaceContainerHigh
+    val vectorTint = if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurface
+    val paletteTint =
+        if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val sidePreviewTint = if (homepageStyle) Color.White else MaterialTheme.colorScheme.onSurface
+
+    Surface(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(
+                horizontal = if (homepageStyle) 0.dp else 16.dp,
+                vertical = 4.dp
+            ),
+        color = Color.Transparent
     ) {
         Row(
             modifier = Modifier
@@ -923,55 +584,43 @@ private fun ThemeListItem(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
+            val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
+            val isBattery =
+                packageName.contains("battery", ignoreCase = true) ||
+                    category.contains("battery", ignoreCase = true)
+            val isBackGesture =
+                packageName.contains("back_gesture", ignoreCase = true) ||
+                    category.contains("back_gesture", ignoreCase = true)
             Box(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(MaterialTheme.shapes.small)
             ) {
-                val isInstalled = installState is ThemeInstallState.Installed ||
-                                  installState is ThemeInstallState.InstalledInactive
-                val previewMeta = remember(theme.id) {
-                    val pkg = theme.overlays.firstOrNull()?.packageName ?: ""
-                    val cat = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
-                    ThemePreviewMeta(
-                        packageName = pkg,
-                        isBattery = pkg.contains("battery") || cat.contains("battery"),
-                        isBackGesture = pkg.contains("back_gesture") || cat.contains("back_gesture"),
-                        isChargingAnim = pkg.contains("charging_animation") || cat.contains("charging_animation"),
-                        isUdfpsAnim = pkg.contains("udfps_animation") || cat.contains("udfps_animation"),
-                        isUdfpsIcon = pkg.contains("udfps_icon") || cat.contains("udfps_icon"),
-                    )
-                }
-                val packageName = previewMeta.packageName
-                val isBattery = previewMeta.isBattery
-                val isBackGesture = previewMeta.isBackGesture
-                val isChargingAnim = previewMeta.isChargingAnim
-                val isUdfpsAnim = previewMeta.isUdfpsAnim && LocalUdfpsSupported.current
-                val isUdfpsIcon = previewMeta.isUdfpsIcon && LocalUdfpsSupported.current
-                val ctx = LocalContext.current
-                val previewResIds = remember(packageName) { getLocalPreviewResIds(ctx, packageName) }
+                val onDevice = selectionState is ThemeSelectionState.Active ||
+                    selectionState is ThemeSelectionState.Inactive
 
                 run {
+                    val previewResIds = getLocalPreviewResIds(LocalContext.current, packageName)
                     if (previewResIds.isNotEmpty()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
                                 painter = painterResource(previewResIds.first()),
                                 contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                                colorFilter = ColorFilter.tint(
-                                    MaterialTheme.colorScheme.onSurface),
+                                modifier = Modifier.size(32.dp),
+                                colorFilter = ColorFilter.tint(vectorTint)
                             )
                         }
                     } else if (isBattery) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             BatteryStylePreview(
@@ -983,102 +632,51 @@ private fun ThemeListItem(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             BackGesturePreview(modifier = Modifier.fillMaxSize())
                         }
-                    } else if (isChargingAnim) {
-                        ChargingAnimationBannerPreview(
-                            packageName = packageName,
-                            modifier = Modifier.fillMaxSize(),
-                            animate = false,
-                        )
-                    } else if (isUdfpsAnim) {
-                        UdfpsAnimationBannerPreview(
-                            packageName = packageName,
-                            modifier = Modifier.fillMaxSize(),
-                            animate = false,
-                        )
-                    } else if (isUdfpsIcon) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (theme.previewImages.isNotEmpty()) {
-                                AsyncNetworkImage(
-                                    url = theme.previewImages.first(),
-                                    contentDescription = theme.name,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier.size(24.dp),
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Fingerprint,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface,
+                    } else if (onDevice && packageName.isNotEmpty()) {
+                        if (homepageStyle) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(shapeFill)
+                            ) {
+                                ThemePackagePreview(
+                                    packageName = packageName,
+                                    modifier = Modifier.fillMaxSize(),
+                                    showSingleIcon = true
                                 )
                             }
+                        } else {
+                            ThemePackagePreview(
+                                packageName = packageName,
+                                modifier = Modifier.fillMaxSize(),
+                                showSingleIcon = true
+                            )
                         }
-                    } else if (theme.previewImages.isNotEmpty()) {
-                        AsyncNetworkImage(
-                            url = theme.previewImages.first(),
-                            contentDescription = theme.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            errorContent = {
-                                if (isInstalled && packageName.isNotEmpty()) {
-                                    ThemePackagePreview(
-                                        packageName = packageName,
-                                        modifier = Modifier.fillMaxSize(),
-                                        showSingleIcon = true
-                                    )
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.surfaceContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Palette,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                            }
-                        )
-                    } else if (isInstalled && packageName.isNotEmpty()) {
-                        ThemePackagePreview(
-                            packageName = packageName,
-                            modifier = Modifier.fillMaxSize(),
-                            showSingleIcon = true
-                        )
                     } else {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                                .background(shapeFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Palette,
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = paletteTint
                             )
                         }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -1089,28 +687,185 @@ private fun ThemeListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = theme.description.ifEmpty { theme.category },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (theme.description.isNotBlank()) {
+                    Text(
+                        text = theme.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                when (selectionState) {
+                    is ThemeSelectionState.Active -> {
+                        Text(
+                            text = "✓ ${stringResource(R.string.active)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    is ThemeSelectionState.Inactive -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = stringResource(R.string.theme_not_applied),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {}
+                }
+            }
+
+            val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
+            if (sidePreviewIds.size > 1) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 48.dp, height = 80.dp)
+                        .clip(MaterialTheme.shapes.extraSmall)
+                        .then(
+                            if (homepageStyle) Modifier.background(shapeFill) else Modifier
+                        )
+                ) {
+                    Image(
+                        painter = painterResource(sidePreviewIds[1]),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                        colorFilter = ColorFilter.tint(sidePreviewTint)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactThemeCard(
+    theme: Theme,
+    selectionState: ThemeSelectionState,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .width(140.dp),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clip(MaterialTheme.shapes.medium)
+            ) {
+                val onDevice = selectionState is ThemeSelectionState.Active ||
+                    selectionState is ThemeSelectionState.Inactive
+                val packageName = theme.overlays.firstOrNull()?.packageName ?: ""
+                val category = theme.category.ifEmpty { theme.overlays.firstOrNull()?.componentId ?: "" }
+                val isBattery =
+                    packageName.contains("battery", ignoreCase = true) ||
+                        category.contains("battery", ignoreCase = true)
+                val isBackGesture =
+                    packageName.contains("back_gesture", ignoreCase = true) ||
+                        category.contains("back_gesture", ignoreCase = true)
+                val compactPreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
+
+                when {
+                    compactPreviewIds.isNotEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = painterResource(compactPreviewIds.first()),
+                                contentDescription = theme.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                            )
+                        }
+                    }
+                    isBattery -> {
+                        BatteryStylePreview(
+                            packageName = packageName,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    isBackGesture -> {
+                        BackGesturePreview(modifier = Modifier.fillMaxSize())
+                    }
+                    onDevice && packageName.isNotEmpty() -> {
+                        ThemePackagePreview(
+                            packageName = packageName,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
                 
-                val stateText = when (installState) {
-                    is ThemeInstallState.Installed -> "Active"
-                    is ThemeInstallState.InstalledInactive -> "Installed"
+                val stateColor = when (selectionState) {
+                    is ThemeSelectionState.Active -> MaterialTheme.colorScheme.primary
+                    is ThemeSelectionState.Inactive -> MaterialTheme.colorScheme.secondary
+                    is ThemeSelectionState.Missing -> MaterialTheme.colorScheme.error
                     else -> null
                 }
-                stateText?.let {
-                    Text(
-                        text = "✓ $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
+                stateColor?.let { color ->
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(color)
                     )
                 }
             }
             
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = theme.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = theme.author,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -1125,9 +880,7 @@ private fun LoadingState() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            ContainedLoadingIndicator(
-                containerShape = CircleShape,
-            )
+            LoadingIndicator()
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.loading_themes),
@@ -1219,12 +972,25 @@ private fun EmptyState(isSearching: Boolean) {
     }
 }
 
-private val sPreviewMapCache = mutableMapOf<String, String>()
-private var sPreviewMapLoaded = false
-private val sPreviewIdsCache = mutableMapOf<String, List<Int>>()
+@Composable
+private fun browseScreenTitle(section: StoreSection): String {
+    return stringResource(
+        when (section) {
+            StoreSection.NetworkIcons -> R.string.store_section_network_icons
+            StoreSection.IconPacks -> R.string.store_section_icon_packs
+            StoreSection.BatteryStyles -> R.string.store_section_battery_styles
+            StoreSection.BackGesture -> R.string.store_section_back_gesture
+            StoreSection.StatusBarCustomization -> R.string.store_section_status_bar_customization
+            StoreSection.All -> R.string.store_title_all
+        }
+    )
+}
 
+private val sPreviewMapCache = mutableMapOf<String, String>()
+
+@Composable
 private fun getLocalPreviewResIds(context: android.content.Context, packageName: String): List<Int> {
-    if (!sPreviewMapLoaded) {
+    if (sPreviewMapCache.isEmpty()) {
         try {
             val entries = context.resources.getStringArray(R.array.overlay_preview_map)
             for (entry in entries) {
@@ -1232,17 +998,10 @@ private fun getLocalPreviewResIds(context: android.content.Context, packageName:
                 if (parts.size == 2) sPreviewMapCache[parts[0]] = parts[1]
             }
         } catch (_: Exception) {}
-        sPreviewMapLoaded = true
     }
-    sPreviewIdsCache[packageName]?.let { return it }
-    val prefix = sPreviewMapCache[packageName] ?: run {
-        sPreviewIdsCache[packageName] = emptyList()
-        return emptyList()
-    }
-    val ids = (1..4).mapNotNull { i ->
+    val prefix = sPreviewMapCache[packageName] ?: return emptyList()
+    return (1..4).mapNotNull { i ->
         val id = context.resources.getIdentifier("${prefix}_$i", "drawable", context.packageName)
         if (id != 0) id else null
     }
-    sPreviewIdsCache[packageName] = ids
-    return ids
 }

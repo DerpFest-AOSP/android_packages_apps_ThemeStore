@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +15,6 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
-
 package com.android.axion.axthemestore.ui
 
 import android.content.Context
@@ -27,9 +26,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -38,6 +35,7 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainScreen(viewModel: ThemeStoreViewModel) {
     val navController = rememberNavController()
@@ -60,7 +58,6 @@ fun MainScreen(viewModel: ThemeStoreViewModel) {
         val packageReceiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 viewModel.loadThemes(forceRefresh = true)
-                viewModel.loadIconPacks()
             }
         }
         
@@ -78,8 +75,6 @@ fun MainScreen(viewModel: ThemeStoreViewModel) {
     }
     
     val motionScheme = MaterialTheme.motionScheme
-    val isUdfpsSupported = remember { viewModel.getThemeEngineProxy().isUdfpsSupported() }
-    CompositionLocalProvider(LocalUdfpsSupported provides isUdfpsSupported) {
     NavHost(
         navController = navController,
         startDestination = "themes",
@@ -106,6 +101,7 @@ fun MainScreen(viewModel: ThemeStoreViewModel) {
         composable("installed_components") {
             InstalledComponentsScreen(
                 viewModel = viewModel,
+                storeSection = viewModel.storeSection,
                 onBackClick = { navController.popBackStack() }
             )
         }
@@ -143,6 +139,5 @@ fun MainScreen(viewModel: ThemeStoreViewModel) {
                 )
             }
         }
-    }
     }
 }

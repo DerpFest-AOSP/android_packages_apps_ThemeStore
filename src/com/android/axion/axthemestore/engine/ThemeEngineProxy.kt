@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025-2026 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,105 +19,88 @@ package com.android.axion.axthemestore.engine
 
 import android.content.Context
 import android.content.om.OverlayManager
+import android.content.om.OverlayManagerTransaction
 import android.content.res.ThemeEngine
-import android.hardware.fingerprint.FingerprintManager
-import android.hardware.fingerprint.FingerprintSensorPropertiesInternal
 import android.os.Handler
-import android.os.HandlerThread
+import android.os.Looper
 import android.os.UserHandle
 import android.provider.Settings
 import android.util.Log
+import android.view.Choreographer
 import org.json.JSONObject
 
 class ThemeEngineProxy(private val context: Context) {
 
-    fun isUdfpsSupported(): Boolean {
-        return try {
-            context.resources.run {
-                if (getIdentifier("config_is_powerbutton_fps", "bool", "android")
-                        .takeIf { it != 0 }?.let { getBoolean(it) } == true) {
-                    return false
-                }
-                getIdentifier("config_udfps_sensor_props", "array", "android")
-                    .takeIf { it != 0 }
-                    ?.let { getIntArray(it) }
-                    ?.takeIf { it.isNotEmpty() }
-                    ?.let { return true }
-            }
-            context.getSystemService(FingerprintManager::class.java)
-                ?.sensorPropertiesInternal
-                ?.any { it.isAnyUdfpsType } == true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to check UDFPS support", e)
-            false
-        }
-    }
-
-    fun isUdfpsCategory(category: String): Boolean {
-        return category.contains("udfps")
-    }
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val TAG = "ThemeEngineProxy"
 
-        private val workerThread: HandlerThread by lazy {
-            HandlerThread("ThemeEngineProxy-worker").apply { start() }
-        }
-        private val workerHandler: Handler by lazy { Handler(workerThread.looper) }
-
         const val SETTINGS_THEME_ENGINE_DATA = "theme_engine_data"
-        private const val OVERLAY_CATEGORY_PREFIX = "android.theme.customization."
 
-        private val CATEGORY_ALIASES = mapOf(
-            "back_gesture" to "android.theme.customization.back_gesture",
-            "charging_animation" to "android.theme.customization.charging_animation",
-            "battery_style" to "android.theme.customization.battery_style",
-            "udfps_animation" to "android.theme.customization.udfps_animation",
-            "udfps_icon" to "android.theme.customization.udfps_icon",
-        )
-
+        /** OMS categories mirrored into [Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES]. */
         private val SYNCED_OVERLAY_CATEGORIES = setOf(
             "android.theme.customization.icon_pack.android",
             "android.theme.customization.icon_pack.systemui",
+            "android.theme.customization.icon_pack.settings",
+            "android.theme.customization.icon_pack.launcher",
+            "android.theme.customization.icon_pack.themepicker",
             "android.theme.customization.back_gesture",
-            "android.theme.customization.charging_animation",
             "android.theme.customization.battery_style",
-            "android.theme.customization.udfps_animation",
-            "android.theme.customization.udfps_icon",
         )
 
         object Category {
             const val STATUSBAR_WIFI = "statusbar_wifi"
             const val STATUSBAR_SIGNAL = "statusbar_signal"
+            /** Engine / settings key; mirrors OMS [OMS_DATA_ICON] and short alias "data". */
+            const val STATUSBAR_DATA = "statusbar_data"
+
+            /** OMS overlay categories (PackageInfo.overlayCategory). */
+            const val OMS_WIFI_ICON = "android.theme.customization.wifi_icon"
+            const val OMS_SIGNAL_ICON = "android.theme.customization.signal_icon"
+            /** Mobile data type icons (LTE, 5G, etc.) in the status bar. */
+            const val OMS_DATA_ICON = "android.customization.sb_data"
+            
             const val ANDROID = "android"
             const val SYSTEMUI = "systemui"
+            
+            const val UI_QS = "ui_qs"
             const val UI_VOLUME = "ui_volume"
-            const val ICON_PACK = "icon_pack"
+            const val UI_STYLE = "ui_style"
         }
-
-        object ThemedIconStyle {
+        
+        object UiStyle {
             const val AXION = "axion"
-            const val AOSP = "aosp"
+            const val MATERIAL3_EXPRESSIVE = "material3_expressive"
+            const val MINIMAL = "minimal"
         }
-
-        const val THEMED_ICON_STYLE_SETTING = "themed_icon_style"
-        const val THEMED_ICONS_ENABLED_SETTING = "themed_icons"
     }
-
+    
     fun getThemeConfig(): ThemeEngineConfig {
         return try {
-            val json = Settings.Secure.getString(context.contentResolver, SETTINGS_THEME_ENGINE_DATA)
-            if (json.isNullOrBlank()) ThemeEngineConfig() else parseConfig(json)
+            val json = Settings.Secure.getString(
+                context.contentResolver,
+                SETTINGS_THEME_ENGINE_DATA
+            )
+            if (json.isNullOrBlank()) {
+                ThemeEngineConfig()
+            } else {
+                parseConfig(json)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse theme config", e)
             ThemeEngineConfig()
         }
     }
-
+    
     private fun saveThemeConfig(config: ThemeEngineConfig): Boolean {
         return try {
             val json = serializeConfig(config)
-            Settings.Secure.putString(context.contentResolver, SETTINGS_THEME_ENGINE_DATA, json)
+            Settings.Secure.putString(
+                context.contentResolver,
+                SETTINGS_THEME_ENGINE_DATA,
+                json
+            )
             Log.d(TAG, "Saved theme config: $json")
             true
         } catch (e: Exception) {
@@ -129,7 +113,7 @@ class ThemeEngineProxy(private val context: Context) {
         return try {
             val json = JSONObject(jsonStr)
             val version = json.optInt("version", 1)
-            val iconTheme = if (json.has("systemThemeIcons") && !json.isNull("systemThemeIcons"))
+            val iconTheme = if (json.has("systemThemeIcons") && !json.isNull("systemThemeIcons")) 
                 json.getString("systemThemeIcons") else null
             val iconThemeTargets = mutableListOf<String>()
             val targetsArr = json.optJSONArray("systemThemeIconTargets")
@@ -138,33 +122,37 @@ class ThemeEngineProxy(private val context: Context) {
                     iconThemeTargets.add(targetsArr.getString(i))
                 }
             }
-
+            
             val categoryThemes = mutableMapOf<String, String>()
             val catThemesObj = json.optJSONObject("categoryThemes")
             catThemesObj?.keys()?.forEach { key ->
                 val pkgName = catThemesObj.optString(key)
-                if (pkgName.isNotBlank()) categoryThemes[normalizeOverlayCategory(key)] = pkgName
+                if (pkgName.isNotBlank()) {
+                    categoryThemes[key] = pkgName
+                }
             }
-
+                
             val themesMap = mutableMapOf<String, ThemeCategoryConfig>()
             val themesObj = json.optJSONObject("themes")
+            
             themesObj?.keys()?.forEach { key ->
                 val catObj = themesObj.getJSONObject(key)
                 val enabled = catObj.optBoolean("enabled", false)
-                val pkgName = if (catObj.has("packageName") && !catObj.isNull("packageName"))
+                val pkgName = if (catObj.has("packageName") && !catObj.isNull("packageName")) 
                     catObj.getString("packageName") else null
-                val styleId = if (catObj.has("styleId") && !catObj.isNull("styleId"))
+                val styleId = if (catObj.has("styleId") && !catObj.isNull("styleId")) 
                     catObj.getString("styleId") else null
+                    
                 themesMap[key] = ThemeCategoryConfig(enabled, pkgName, styleId)
             }
-
+            
             ThemeEngineConfig(version, themesMap, iconTheme, iconThemeTargets, categoryThemes)
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing config JSON", e)
             ThemeEngineConfig()
         }
     }
-
+    
     private fun serializeConfig(config: ThemeEngineConfig): String {
         val json = JSONObject()
         json.put("version", config.version)
@@ -172,11 +160,13 @@ class ThemeEngineProxy(private val context: Context) {
         val targetsArr = org.json.JSONArray()
         config.iconThemeTargets.forEach { targetsArr.put(it) }
         json.put("systemThemeIconTargets", targetsArr)
-
+        
         val catThemesObj = JSONObject()
-        config.categoryThemes.forEach { (key, value) -> catThemesObj.put(key, value) }
+        config.categoryThemes.forEach { (key, value) ->
+            catThemesObj.put(key, value)
+        }
         json.put("categoryThemes", catThemesObj)
-
+        
         val themesObj = JSONObject()
         config.themes.forEach { (key, value) ->
             val catObj = JSONObject()
@@ -186,244 +176,470 @@ class ThemeEngineProxy(private val context: Context) {
             themesObj.put(key, catObj)
         }
         json.put("themes", themesObj)
-
+        
         return json.toString()
     }
-
-    fun setIconPack(packageName: String): Boolean {
+    
+    fun enableTheme(category: String, packageName: String): Boolean {
         val config = getThemeConfig()
-        val updatedThemes = config.themes.toMutableMap().apply {
-            put(Category.ICON_PACK, ThemeCategoryConfig(enabled = true, packageName = packageName))
-        }
-        return saveThemeConfig(config.copy(themes = updatedThemes))
+        val themes = syncEnabledThemesForCategories(
+            config.themes,
+            listOf(category),
+            packageName,
+            enabled = true
+        )
+        return saveThemeConfig(config.copy(themes = themes))
     }
-
-    fun getIconPack(): String? {
-        val entry = getThemeConfig().themes[Category.ICON_PACK]
-        return if (entry?.enabled == true) entry.packageName else null
-    }
-
-    fun clearIconPack(): Boolean {
+    
+    fun disableTheme(category: String): Boolean {
         val config = getThemeConfig()
-        val updatedThemes = config.themes.toMutableMap().apply {
-            put(Category.ICON_PACK, ThemeCategoryConfig(enabled = false))
-        }
-        return saveThemeConfig(config.copy(themes = updatedThemes))
+        val themes = syncEnabledThemesForCategories(
+            config.themes,
+            listOf(category),
+            null,
+            enabled = false
+        )
+        return saveThemeConfig(config.copy(themes = themes))
     }
-
+    
+    fun enableThemeOverlays(overlays: Map<String, String>): Boolean {
+        val config = getThemeConfig()
+        var themes = config.themes
+        overlays.forEach { (category, packageName) ->
+            themes = syncEnabledThemesForCategories(
+                themes,
+                listOf(category),
+                packageName,
+                enabled = true
+            )
+        }
+        return saveThemeConfig(config.copy(themes = themes))
+    }
+    
+    fun disableThemeOverlays(categories: List<String>): Boolean {
+        val config = getThemeConfig()
+        var themes = config.themes
+        categories.forEach { category ->
+            themes = syncEnabledThemesForCategories(
+                themes,
+                listOf(category),
+                null,
+                enabled = false
+            )
+        }
+        return saveThemeConfig(config.copy(themes = themes))
+    }
+    
+    fun isThemeEnabled(category: String): Boolean {
+        return getThemeConfig().themes[category]?.enabled == true
+    }
+    
+    fun getEnabledPackage(category: String): String? {
+        val categoryConfig = getThemeConfig().themes[category]
+        return if (categoryConfig?.enabled == true) categoryConfig.packageName else null
+    }
+    
     fun getEnabledThemes(): Map<String, String> {
         return getThemeConfig().themes
             .filter { it.value.enabled && it.value.packageName != null }
+            .filterKeys { !isEngineMirrorKey(it) }
             .mapValues { it.value.packageName!! }
     }
-
-    fun disableThemeOverlays(categories: List<String>): Boolean {
+    
+    fun clearAllThemes(): Boolean {
+        return saveThemeConfig(ThemeEngineConfig())
+    }
+    
+    fun setUiStyle(styleId: String): Boolean {
         val config = getThemeConfig()
-        val updatedThemes = config.themes.toMutableMap().apply {
-            categories.forEach { put(it, ThemeCategoryConfig(enabled = false)) }
-        }
+        val updatedThemes = config.themes.toMutableMap()
+        updatedThemes[Category.UI_STYLE] = ThemeCategoryConfig(
+            enabled = true,
+            packageName = null,
+            styleId = styleId
+        )
+        updatedThemes[Category.UI_QS] = ThemeCategoryConfig(
+            enabled = true,
+            packageName = null,
+            styleId = styleId
+        )
         return saveThemeConfig(config.copy(themes = updatedThemes))
     }
-
-    fun setIconThemeWithTargets(packageName: String, targets: List<String>): Boolean {
-        val config = getThemeConfig()
-        val newCategoryThemes = config.categoryThemes.toMutableMap().apply {
-            targets.forEach { put(it, packageName) }
-        }
-        val saved = saveThemeConfig(config.copy(
-            iconTheme = packageName,
-            iconThemeTargets = targets,
-            categoryThemes = newCategoryThemes
-        ))
-        if (saved) syncOverlayPackagesSettings(newCategoryThemes)
-        return saved
+    
+    fun getUiStyle(): String {
+        return getThemeConfig().themes[Category.UI_QS]?.styleId
+            ?: getThemeConfig().themes[Category.UI_STYLE]?.styleId
+            ?: UiStyle.AXION
     }
-
-    fun getIconTheme(): String? = getThemeConfig().iconTheme
-
-    fun getIconThemeTargets(): List<String> = getThemeConfig().iconThemeTargets
-
+    
+    fun setIconTheme(packageName: String): Boolean {
+        val config = getThemeConfig()
+        return saveThemeConfig(config.copy(iconTheme = packageName))
+    }
+    
+    fun getIconTheme(): String? {
+        return getThemeConfig().iconTheme
+    }
+    
     fun clearIconTheme(): Boolean {
         val config = getThemeConfig()
         return saveThemeConfig(config.copy(iconTheme = null, iconThemeTargets = emptyList()))
     }
-
-    fun setCategoryTheme(category: String, packageName: String): Boolean {
-        val overlayCategory = normalizeOverlayCategory(category)
+    
+    fun clearCategoryThemesForPackage(packageName: String): Boolean {
         val config = getThemeConfig()
-        val oldPackage = config.categoryThemes[overlayCategory]
-        val updated = buildUpdatedCategoryConfig(config, config.categoryThemes + (overlayCategory to packageName))
-        val saved = saveThemeConfig(updated)
-        if (saved) {
-            syncOverlayPackagesSettings(updated.categoryThemes)
-            workerHandler.post {
-                applyOverlays(packageName, setOfNotNull(oldPackage?.takeIf { it != packageName }))
+        val updatedCategoryThemes =
+            config.categoryThemes.filterValues { it != packageName }.toMutableMap()
+
+        val removedPrimaries = config.categoryThemes
+            .filterValues { it == packageName }
+            .keys
+            .map { primaryOmsCategoryForKey(it) }
+            .distinct()
+
+        var themes = config.themes
+        for (primary in removedPrimaries) {
+            val stillHas = updatedCategoryThemes.keys.any {
+                primaryOmsCategoryForKey(it) == primary
             }
+            if (!stillHas) {
+                themes = syncEnabledThemesForCategories(
+                    themes,
+                    listOf(primary),
+                    null,
+                    enabled = false
+                )
+            }
+        }
+
+        val allTargets = iconThemeTargetsFromMap(updatedCategoryThemes)
+        val uniquePackages = updatedCategoryThemes.values.toSet()
+        val iconThemePackage = if (uniquePackages.size == 1) uniquePackages.first() else null
+
+        val saved = saveThemeConfig(config.copy(
+            iconTheme = iconThemePackage,
+            iconThemeTargets = allTargets,
+            categoryThemes = updatedCategoryThemes,
+            themes = themes
+        ))
+        if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
+        }
+        return saved
+    }
+    
+    fun getIconThemeTargets(): List<String> {
+        return getThemeConfig().iconThemeTargets
+    }
+    
+    fun setIconThemeWithTargets(packageName: String, targets: List<String>): Boolean {
+        val config = getThemeConfig()
+        val updatedCategoryThemes = config.categoryThemes.toMutableMap()
+        targets.forEach { target ->
+            updatedCategoryThemes[target] = packageName
+        }
+        val saved = saveThemeConfig(config.copy(
+            iconTheme = packageName,
+            iconThemeTargets = targets,
+            categoryThemes = updatedCategoryThemes
+        ))
+        if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
+        }
+        return saved
+    }
+    
+    fun enableIconThemeTarget(target: String): Boolean {
+        val config = getThemeConfig()
+        if (config.iconTheme == null) return false
+        
+        val newTargets = config.iconThemeTargets.toMutableList()
+        if (!newTargets.contains(target)) {
+            newTargets.add(target)
+        }
+        return saveThemeConfig(config.copy(iconThemeTargets = newTargets))
+    }
+    
+    fun disableIconThemeTarget(target: String): Boolean {
+        val config = getThemeConfig()
+        if (config.iconTheme == null) return false
+        
+        val newTargets = config.iconThemeTargets.toMutableList()
+        newTargets.remove(target)
+        return saveThemeConfig(config.copy(iconThemeTargets = newTargets))
+    }
+    
+    fun isIconThemeTargetEnabled(target: String): Boolean {
+        val config = getThemeConfig()
+        return config.iconTheme != null && config.iconThemeTargets.contains(target)
+    }
+    
+    fun setCategoryTheme(category: String, packageName: String): Boolean {
+        val config = getThemeConfig()
+        val oldPackage = config.categoryThemes[category]
+            ?: allPersistedKeysForCategory(category)
+                .mapNotNull { config.categoryThemes[it] }
+                .firstOrNull()
+        val updatedCategoryThemes = config.categoryThemes.toMutableMap()
+        for (k in allPersistedKeysForCategory(category)) {
+            updatedCategoryThemes[k] = packageName
+        }
+
+        val allTargets = iconThemeTargetsFromMap(updatedCategoryThemes)
+        val uniquePackages = updatedCategoryThemes.values.toSet()
+        val iconThemePackage = if (uniquePackages.size == 1) uniquePackages.first() else null
+
+        val themes = syncEnabledThemesForCategories(
+            config.themes,
+            listOf(category),
+            packageName,
+            enabled = true
+        )
+
+        val saved = saveThemeConfig(config.copy(
+            iconTheme = iconThemePackage,
+            iconThemeTargets = allTargets,
+            categoryThemes = updatedCategoryThemes,
+            themes = themes
+        ))
+        if (saved) {
+            setOverlayEnabled(packageName, true, oldPackage)
+            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
         return saved
     }
 
     fun clearCategoryTheme(category: String): Boolean {
-        val overlayCategory = normalizeOverlayCategory(category)
         val config = getThemeConfig()
-        val oldPackage = config.categoryThemes[overlayCategory]
-        val updated = buildUpdatedCategoryConfig(config, config.categoryThemes - overlayCategory)
-        val saved = saveThemeConfig(updated)
-        if (saved) {
-            syncOverlayPackagesSettings(updated.categoryThemes)
-            workerHandler.post {
-                applyOverlays(null, setOfNotNull(oldPackage))
-            }
+        val keys = allPersistedKeysForCategory(category)
+        val oldPackage = config.categoryThemes[category]
+            ?: keys.mapNotNull { config.categoryThemes[it] }.firstOrNull()
+        val updatedCategoryThemes = config.categoryThemes.toMutableMap()
+        for (k in keys) {
+            updatedCategoryThemes.remove(k)
         }
-        return saved
-    }
 
-    fun applyThemeComponents(packageName: String, categories: List<String>): Boolean {
-        val overlayCategories = categories.map(::normalizeOverlayCategory)
-        val config = getThemeConfig()
-        val newCategoryThemes = config.categoryThemes.toMutableMap().apply {
-            entries.removeAll { it.value == packageName && it.key !in overlayCategories }
-            overlayCategories.forEach { put(it, packageName) }
-        }
-        val oldPackages = overlayCategories
-            .mapNotNull { config.categoryThemes[it] }
-            .filter { it != packageName }
-            .toSet()
-        val updated = buildUpdatedCategoryConfig(config, newCategoryThemes)
-        val saved = saveThemeConfig(updated)
-        if (saved) {
-            syncOverlayPackagesSettings(updated.categoryThemes)
-            workerHandler.post { applyOverlays(packageName, oldPackages) }
-        }
-        return saved
-    }
+        val allTargets = iconThemeTargetsFromMap(updatedCategoryThemes)
+        val uniquePackages = updatedCategoryThemes.values.toSet()
+        val iconThemePackage = if (uniquePackages.size == 1) uniquePackages.first() else null
 
-    fun clearCategoryThemesForPackage(packageName: String): Boolean {
-        val config = getThemeConfig()
-        val updated = buildUpdatedCategoryConfig(config, config.categoryThemes.filterValues { it != packageName })
-        val saved = saveThemeConfig(updated)
-        if (saved) {
-            syncOverlayPackagesSettings(updated.categoryThemes)
-            workerHandler.post {
-                applyOverlays(null, setOf(packageName))
-            }
-        }
-        return saved
-    }
-
-    fun getCategoryTheme(category: String): String? =
-        getThemeConfig().categoryThemes[normalizeOverlayCategory(category)]
-
-    fun getCategoryThemes(): Map<String, String> = getThemeConfig().categoryThemes.withAliases()
-
-    private fun buildUpdatedCategoryConfig(config: ThemeEngineConfig, newCategoryThemes: Map<String, String>): ThemeEngineConfig {
-        val uniquePackages = newCategoryThemes.values.toSet()
-        return config.copy(
-            iconTheme = if (uniquePackages.size == 1) uniquePackages.first() else null,
-            iconThemeTargets = newCategoryThemes.keys.toList(),
-            categoryThemes = newCategoryThemes
+        val themes = syncEnabledThemesForCategories(
+            config.themes,
+            listOf(category),
+            null,
+            enabled = false
         )
-    }
 
-    private fun applyOverlays(packageName: String?, oldPackages: Set<String>) {
-        try {
-            val om = context.getSystemService(OverlayManager::class.java) ?: return
-            for (oldPkg in oldPackages) {
-                try {
-                    om.setEnabled(oldPkg, false, UserHandle.SYSTEM)
-                    Log.d(TAG, "disabled overlay: $oldPkg")
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to disable overlay: $oldPkg", e)
-                }
+        val saved = saveThemeConfig(config.copy(
+            iconTheme = iconThemePackage,
+            iconThemeTargets = allTargets,
+            categoryThemes = updatedCategoryThemes,
+            themes = themes
+        ))
+        if (saved) {
+            if (oldPackage != null) {
+                setOverlayEnabled(oldPackage, false, null)
             }
-            packageName ?: return
-            workerHandler.postDelayed({
-                try {
-                    om.setEnabledExclusiveInCategory(packageName, UserHandle.SYSTEM)
-                    Log.d(TAG, "enabled overlay: $packageName")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to enable overlay: $packageName", e)
-                }
-            }, 500)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to apply overlays for $packageName", e)
+            syncOverlayPackagesSettings(updatedCategoryThemes)
         }
+        return saved
     }
 
     private fun syncOverlayPackagesSettings(categoryThemes: Map<String, String>) {
         try {
-            val resolver = context.contentResolver
             val current = Settings.Secure.getStringForUser(
-                resolver,
+                context.contentResolver,
                 Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
-                UserHandle.myUserId()
+                UserHandle.USER_CURRENT
             )
             val json = if (current.isNullOrBlank()) JSONObject() else JSONObject(current)
-
-            SYNCED_OVERLAY_CATEGORIES.forEach { category ->
-                json.remove(category)
-                json.remove(category.removePrefix(OVERLAY_CATEGORY_PREFIX))
-            }
+            SYNCED_OVERLAY_CATEGORIES.forEach { json.remove(it) }
             categoryThemes.forEach { (category, packageName) ->
-                val overlayCategory = normalizeOverlayCategory(category)
-                if (overlayCategory in SYNCED_OVERLAY_CATEGORIES) {
-                    json.put(overlayCategory, packageName)
+                if (category in SYNCED_OVERLAY_CATEGORIES && packageName.isNotBlank()) {
+                    json.put(category, packageName)
                 }
             }
-
             Settings.Secure.putStringForUser(
-                resolver,
+                context.contentResolver,
                 Settings.Secure.THEME_CUSTOMIZATION_OVERLAY_PACKAGES,
                 json.toString(),
-                UserHandle.myUserId()
+                UserHandle.USER_CURRENT
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync overlay packages settings", e)
+            Log.e(TAG, "Failed to sync THEME_CUSTOMIZATION_OVERLAY_PACKAGES", e)
         }
     }
 
-    private fun normalizeOverlayCategory(category: String): String =
-        if (category.startsWith(OVERLAY_CATEGORY_PREFIX)) category else CATEGORY_ALIASES[category] ?: category
-
-    private fun Map<String, String>.withAliases(): Map<String, String> {
-        val result = toMutableMap()
-        CATEGORY_ALIASES.forEach { (alias, category) ->
-            result[category]?.let { result[alias] = it }
-        }
-        return result
-    }
-
-    fun setThemedIconStyle(style: String) {
-        Settings.Secure.putString(context.contentResolver, THEMED_ICON_STYLE_SETTING, style)
-    }
-
-    fun getThemedIconStyle(): String {
-        return Settings.Secure.getString(context.contentResolver, THEMED_ICON_STYLE_SETTING)
-            ?: ThemedIconStyle.AXION
-    }
-
-    fun setThemedIconsEnabled(enabled: Boolean) {
-        Settings.Secure.putInt(context.contentResolver, THEMED_ICONS_ENABLED_SETTING, if (enabled) 1 else 0)
-    }
-
-    fun isThemedIconsEnabled(): Boolean {
-        return Settings.Secure.getInt(context.contentResolver, THEMED_ICONS_ENABLED_SETTING, 0) == 1
-    }
-
-    fun getAvailableOverlays(category: String): List<String> {
-        return try {
-            ThemeEngine.getInstance(context)?.getAvailableOverlays(category) ?: emptyList()
+    private fun setOverlayEnabled(packageName: String, enabled: Boolean, disablePackage: String?) {
+        try {
+            val om = context.getSystemService(OverlayManager::class.java) ?: return
+            val userHandle = UserHandle.of(UserHandle.myUserId())
+            val builder = OverlayManagerTransaction.Builder()
+            if (disablePackage != null && disablePackage != packageName) {
+                try {
+                    val info = om.getOverlayInfo(disablePackage, userHandle)
+                    if (info != null) {
+                        builder.setEnabled(info.overlayIdentifier, false)
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to disable old overlay: $disablePackage", e)
+                }
+            }
+            try {
+                val info = om.getOverlayInfo(packageName, userHandle)
+                if (info != null) {
+                    builder.setEnabled(info.overlayIdentifier, enabled)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to ${if (enabled) "enable" else "disable"} overlay: $packageName", e)
+            }
+            om.commit(builder.build())
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get available overlays", e)
-            emptyList()
+            Log.e(TAG, "Failed to manage overlay: $packageName", e)
         }
     }
+    
+    fun getCategoryTheme(category: String): String? {
+        return getThemeConfig().categoryThemes[category]
+    }
+
+    /**
+     * Keys duplicated for ThemeEngineManagerService resource lookup — hide from UI/state.
+     * @see com.android.server.theme.ThemeEngineManagerService.loadThemeConfig
+     */
+    private fun isEngineMirrorKey(key: String): Boolean =
+        key == Category.STATUSBAR_WIFI ||
+            key == Category.STATUSBAR_SIGNAL ||
+            key == Category.STATUSBAR_DATA ||
+            key == "wifi" ||
+            key == "signal" ||
+            key == "data"
+
+    /**
+     * All keys persisted for one logical OMS category (OMS + framework lookup aliases).
+     */
+    private fun allPersistedKeysForCategory(category: String): List<String> {
+        val mirrors = when (category) {
+            Category.OMS_SIGNAL_ICON -> listOf(Category.STATUSBAR_SIGNAL, "signal")
+            Category.OMS_WIFI_ICON -> listOf(Category.STATUSBAR_WIFI, "wifi")
+            Category.OMS_DATA_ICON -> listOf(Category.STATUSBAR_DATA, "data")
+            else -> emptyList()
+        }
+        return listOf(category) + mirrors
+    }
+
+    /** Map mirror / alias keys back to the primary OMS category for comparisons. */
+    private fun primaryOmsCategoryForKey(key: String): String = when (key) {
+        Category.STATUSBAR_SIGNAL, "signal" -> Category.OMS_SIGNAL_ICON
+        Category.STATUSBAR_WIFI, "wifi" -> Category.OMS_WIFI_ICON
+        Category.STATUSBAR_DATA, "data" -> Category.OMS_DATA_ICON
+        else -> key
+    }
+
+    /**
+     * Exposed map for UI: omit engine mirror keys so lists are not duplicated.
+     */
+    fun getCategoryThemes(): Map<String, String> {
+        return getThemeConfig().categoryThemes.filterKeys { !isEngineMirrorKey(it) }
+    }
+
+    private fun syncEnabledThemesForCategories(
+        base: Map<String, ThemeCategoryConfig>,
+        categoriesToSync: Collection<String>,
+        packageName: String?,
+        enabled: Boolean
+    ): Map<String, ThemeCategoryConfig> {
+        val out = base.toMutableMap()
+        for (cat in categoriesToSync) {
+            for (k in allPersistedKeysForCategory(cat)) {
+                out[k] = ThemeCategoryConfig(
+                    enabled = enabled,
+                    packageName = if (enabled) packageName else null
+                )
+            }
+        }
+        return out
+    }
+
+    private fun iconThemeTargetsFromMap(categoryThemes: Map<String, String>): List<String> =
+        categoryThemes.keys.filter { !isEngineMirrorKey(it) }.toList()
+    
+    fun applyThemeComponents(packageName: String, categories: List<String>): Boolean {
+        val config = getThemeConfig()
+        val updatedCategoryThemes = config.categoryThemes.toMutableMap()
+        val categorySet = categories.toSet()
+
+        val categoriesToRemove = updatedCategoryThemes.entries
+            .filter { (key, value) ->
+                value == packageName && primaryOmsCategoryForKey(key) !in categorySet
+            }
+            .map { it.key }
+
+        categoriesToRemove.forEach { updatedCategoryThemes.remove(it) }
+
+        categories.forEach { category ->
+            for (k in allPersistedKeysForCategory(category)) {
+                updatedCategoryThemes[k] = packageName
+            }
+        }
+
+        val allTargets = iconThemeTargetsFromMap(updatedCategoryThemes)
+        val uniquePackages = updatedCategoryThemes.values.toSet()
+        val iconThemePackage = if (uniquePackages.size == 1) uniquePackages.first() else null
+
+        var themes = config.themes
+        for (cat in categoriesToRemove.map { primaryOmsCategoryForKey(it) }.distinct()) {
+            themes = syncEnabledThemesForCategories(themes, listOf(cat), null, enabled = false)
+        }
+        for (cat in categories) {
+            themes = syncEnabledThemesForCategories(themes, listOf(cat), packageName, enabled = true)
+        }
+
+        val saved = saveThemeConfig(config.copy(
+            iconTheme = iconThemePackage,
+            iconThemeTargets = allTargets,
+            categoryThemes = updatedCategoryThemes,
+            themes = themes
+        ))
+        if (saved) {
+            syncOverlayPackagesSettings(updatedCategoryThemes)
+            notifyThemeChangedAfterOverlayChange()
+        }
+        return saved
+    }
+
+    private fun getThemeEngine(): ThemeEngine? = ThemeEngine.getInstance(context)
 
     fun notifyThemeChanged() {
         try {
-            ThemeEngine.getInstance(context)?.notifyThemeChanged(null)
+            context.contentResolver.notifyChange(
+                Settings.Secure.getUriFor(SETTINGS_THEME_ENGINE_DATA),
+                null
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to notify theme settings observers", e)
+        }
+        val engine = getThemeEngine() ?: return
+        try {
+            engine.notifyThemeChanged(null)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to notify theme changed", e)
+        }
+    }
+
+    /**
+     * Pushes theme updates immediately, then again after the current message pass and after the
+     * next frame so SystemUI can apply overlay dimensions before the next signal/Wi‑Fi tick.
+     */
+    fun notifyThemeChangedAfterOverlayChange() {
+        notifyThemeChanged()
+        mainHandler.post {
+            notifyThemeChanged()
+            Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+                override fun doFrame(frameTimeNs: Long) {
+                    notifyThemeChanged()
+                }
+            })
         }
     }
 }

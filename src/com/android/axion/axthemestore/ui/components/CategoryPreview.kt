@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025-2026 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,48 +15,27 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalGlideComposeApi::class)
-
 package com.android.axion.axthemestore.ui.components
 
-import android.content.Context
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.util.PathParser
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.android.axion.axthemestore.R
-import com.android.axion.axthemestore.data.ThumbnailPreloader
-import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
-import com.bumptech.glide.integration.compose.GlideImage
 import kotlin.math.min
 
 private data class BatteryShapeSpec(
@@ -64,6 +44,17 @@ private data class BatteryShapeSpec(
     val viewportHeight: Float,
     val fillPathData: String? = null,
     val accentPathData: String? = null,
+    /**
+     * When true, scale X and Y independently to fill the preview (same idea as the status bar drawable).
+     * Use for tall design boxes that should read as landscape in the status bar.
+     */
+    val nonUniformScale: Boolean = false,
+    /** When [nonUniformScale] is true, multiplies vertical scale only (values below 1 shorten the preview). */
+    val nonUniformScaleYMultiplier: Float = 1f,
+    /** Multiplied by min(scaleX, scaleY) for outline stroke width. */
+    val strokeWidthFactor: Float = 0.7f,
+    /** Extra scale for theme-card preview only (status bar uses config_batteryMeterSlotScalePercent on device). */
+    val previewScaleMultiplier: Float = 1f,
 )
 
 private val BATTERY_SHAPES = mapOf(
@@ -89,12 +80,48 @@ private val BATTERY_SHAPES = mapOf(
         viewportHeight = 12f,
         fillPathData = "M15.25,10.50C12.50,10.57,11.50,10.57,8.75,10.50C7.50,10.40,6.00,9.75,5.50,7.75Q5.12,6.00,5.50,4.50C6.00,3.00,7.50,2.10,8.75,2.00C11.00,1.88,13.00,1.88,15.25,2.00C16.50,2.10,18.00,3.00,18.50,4.50Q18.88,6.00,18.50,7.75C18.00,9.75,16.50,10.40,15.25,10.50z",
     ),
+    /** Upright heart: padded uniform scale, biased up, narrowed horizontally (matches BatteryStyleHeart overlay). */
+    /** No accent in preview — bolt path reads as a second heart when drawn filled; bolt still in overlay. */
+    "heart" to BatteryShapeSpec(
+        pathData = "M12.00,11.38Q11.65,11.38,11.43,11.15L8.10,7.80C7.30,6.96,6.72,6.41,6.72,4.78C6.99,1.36,10.13,0.34,12.00,2.89C13.87,0.34,17.01,1.36,17.28,4.78C17.28,6.41,16.70,6.96,15.90,7.80L12.57,11.15Q12.35,11.38,12.00,11.38z",
+        viewportWidth = 24f,
+        viewportHeight = 12f,
+        fillPathData = "M12.00,11.38Q11.65,11.38,11.43,11.15L8.10,7.80C7.30,6.96,6.72,6.41,6.72,4.78C6.99,1.36,10.13,0.34,12.00,2.89C13.87,0.34,17.01,1.36,17.28,4.78C17.28,6.41,16.70,6.96,15.90,7.80L12.57,11.15Q12.35,11.38,12.00,11.38z",
+        strokeWidthFactor = 0.55f,
+        previewScaleMultiplier = 1.95f,
+    ),
     "smiley" to BatteryShapeSpec(
         pathData = "M3.76,0.62L18.03,0.62A2.74 2.74 0 0 1 20.78,3.36L20.78,8.64A2.74 2.74 0 0 1 18.03,11.38L3.76,11.38A2.74 2.74 0 0 1 1.02,8.64L1.02,3.36A2.74 2.74 0 0 1 3.76,0.62zM21.66,7.79C23.42,7.68,23.42,4.32,21.66,4.21L21.66,7.79z",
         viewportWidth = 22f,
         viewportHeight = 12f,
         fillPathData = "M1.93,3.37L1.93,8.66A1.85 1.85 0 0 0 3.78,10.51L18.04,10.51A1.85 1.85 0 0 0 19.89,8.66L19.89,3.37A1.85 1.85 0 0 0 18.04,1.52L3.78,1.52A1.85 1.85 0 0 0 1.93,3.37z",
         accentPathData = "M12.21,6.01C12.05,7.95,9.45,7.95,9.29,6.01C9.34,5.36,10.21,5.36,10.27,6.01C10.22,6.66,11.28,6.66,11.23,6.01C11.29,5.36,12.16,5.36,12.21,6.01zM15.62,5.03C16.16,5.03,16.59,5.47,16.59,6.01C16.59,6.54,16.16,6.98,15.62,6.98C15.08,6.98,14.65,6.54,14.65,6.01C14.65,5.47,15.08,5.03,15.62,5.03zM5.88,5.03C6.42,5.03,6.86,5.47,6.86,6.01C6.86,6.54,6.42,6.98,5.88,6.98C5.34,6.98,4.91,6.54,4.91,6.01C4.91,5.47,5.34,5.03,5.88,5.03z",
+    ),
+    /** Full perimeter from overlay (24-wide); first bar matches pill geometry like bars 2–3. */
+    "faintui" to BatteryShapeSpec(
+        pathData = "M3.6,0L17.9,0A3.6,3,0,0,1,21.5,3L21.5,12A3.6,3,0,0,1,17.9,15L3.6,15A3.6,3,0,0,1,0,12L0,3A3.6,3,0,0,1,3.6,0ZM12.08,3L12.08,12A0.6,0.5,0,0,0,12.68,12.5L13.48,12.5A0.6,0.5,0,0,0,14.08,12L14.08,3A0.6,0.5,0,0,0,13.48,2.5L12.68,2.5A0.6,0.5,0,0,0,12.08,3ZM8.58,3L8.58,12A0.6,0.5,0,0,0,9.18,12.5L9.98,12.5A0.6,0.5,0,0,0,10.58,12L10.58,3A0.6,0.5,0,0,0,9.98,2.5L9.18,2.5A0.6,0.5,0,0,0,8.58,3ZM4.66,3L4.66,12A0.6,0.5,0,0,0,5.26,12.5L6.06,12.5A0.6,0.5,0,0,0,6.66,12L6.66,3A0.6,0.5,0,0,0,6.06,2.5L5.26,2.5A0.6,0.5,0,0,0,4.66,3ZM21.5,10.83333L21.5,9.46667L22,9.46667Q22.5,9.46667,22.5,9.05L22.5,5.95Q22.5,5.53333,22,5.53333L21.5,5.53333L21.5,4.16667L22.5,4.16667Q24,4.16667,24,5.41667L24,9.58333Q24,10.83333,22.5,10.83333L21.5,10.83333ZM1.84,3.43333L1.84,11.56667A2.28,1.9,0,0,0,4.12,13.46667L17.22,13.46667A2.28,1.9,0,0,0,19.5,11.56667L19.5,3.43333A2.28,1.9,0,0,0,17.22,1.53333L4.12,1.53333A2.28,1.9,0,0,0,1.84,3.43333Z",
+        viewportWidth = 24f,
+        viewportHeight = 15f,
+        fillPathData = "M1.84,3.43333L1.84,11.56667A2.28,1.9,0,0,0,4.12,13.46667L17.22,13.46667A2.28,1.9,0,0,0,19.5,11.56667L19.5,3.43333A2.28,1.9,0,0,0,17.22,1.53333L4.12,1.53333A2.28,1.9,0,0,0,1.84,3.43333Z",
+        nonUniformScale = true,
+        nonUniformScaleYMultiplier = 0.72f,
+        strokeWidthFactor = 0.28f,
+    ),
+    /** Rounded body + plus / cutout detail (BatteryStyleBatteryInverter). Preview scale / stroke match heart style. */
+    "batteryinverter" to BatteryShapeSpec(
+        pathData =
+            "M1.82,5.31L10.18,5.31A1.82 1.82 0 0 1 12.00,7.13L12.00,13.18A1.82 1.82 0 0 1 10.18,15.00L1.82,15.00A1.82 1.82 0 0 1 0.00,13.18L0.00,7.13A1.82 1.82 0 0 1 1.82,5.31z" +
+                "M3.62,10.76L4.27,10.76C5.00,10.76,5.00,9.55,4.27,9.55L3.62,9.55L3.62,8.88C3.62,8.12,2.44,8.12,2.44,8.88L2.44,9.55L1.79,9.55C1.06,9.55,1.06,10.76,1.79,10.76L2.44,10.76L2.44,11.43C2.44,12.18,3.62,12.18,3.62,11.43L3.62,10.76" +
+                "M7.18,10.15L7.18,10.15A0.61 0.61 0 0 0 7.78,10.76L10.10,10.76A0.61 0.61 0 0 0 10.71,10.15L10.71,10.15A0.61 0.61 0 0 0 10.10,9.55L7.78,9.55A0.61 0.61 0 0 0 7.18,10.15z" +
+                "M9.53,5.31L9.53,5.01C9.53,3.80,7.76,3.80,7.76,5.01L7.76,5.31M4.24,5.31L4.24,5.01C4.24,3.80,2.47,3.80,2.47,5.01L2.47,5.31",
+        viewportWidth = 12f,
+        viewportHeight = 15f,
+        fillPathData =
+            "M1.82,5.31L10.18,5.31A1.82 1.82 0 0 1 12.00,7.13L12.00,13.18A1.82 1.82 0 0 1 10.18,15.00L1.82,15.00A1.82 1.82 0 0 1 0.00,13.18L0.00,7.13A1.82 1.82 0 0 1 1.82,5.31z" +
+                "M3.62,10.76L4.27,10.76C5.00,10.76,5.00,9.55,4.27,9.55L3.62,9.55L3.62,8.88C3.62,8.12,2.44,8.12,2.44,8.88L2.44,9.55L1.79,9.55C1.06,9.55,1.06,10.76,1.79,10.76L2.44,10.76L2.44,11.43C2.44,12.18,3.62,12.18,3.62,11.43L3.62,10.76" +
+                "M7.18,10.15L7.18,10.15A0.61 0.61 0 0 0 7.78,10.76L10.10,10.76A0.61 0.61 0 0 0 10.71,10.15L10.71,10.15A0.61 0.61 0 0 0 10.10,9.55L7.78,9.55A0.61 0.61 0 0 0 7.18,10.15z" +
+                "M9.53,5.31L9.53,5.01C9.53,3.80,7.76,3.80,7.76,5.01L7.76,5.31M4.24,5.31L4.24,5.01C4.24,3.80,2.47,3.80,2.47,5.01L2.47,5.31",
+        strokeWidthFactor = 0.55f,
     ),
 )
 
@@ -114,38 +141,52 @@ fun BatteryStylePreview(packageName: String, modifier: Modifier = Modifier) {
     val baseAccentPath: Path? = remember(spec) {
         spec.accentPathData?.let { PathParser.createPathFromPathData(it) }
     }
-    val fillPaint = remember { Paint().apply { style = Paint.Style.FILL; isAntiAlias = true } }
-    val strokePaint = remember { Paint().apply { style = Paint.Style.STROKE; isAntiAlias = true } }
-    val accentPaint = remember { Paint().apply { style = Paint.Style.FILL; isAntiAlias = true } }
-    val matrix = remember { Matrix() }
-    val outlinePath = remember { Path() }
-    val fillPath = remember { Path() }
-    val accentPath = remember { Path() }
 
     Box(
         modifier = modifier.drawWithContent {
             val vw = spec.viewportWidth
             val vh = spec.viewportHeight
-            val scale = min(size.width / vw, size.height / vh) * 0.75f
-            val dx = (size.width - vw * scale) / 2f
-            val dy = (size.height - vh * scale) / 2f
-            matrix.reset()
-            matrix.setScale(scale, scale)
-            matrix.postTranslate(dx, dy)
+            val pad = 0.56f
+            val sx: Float
+            val sy: Float
+            if (spec.nonUniformScale) {
+                sx = size.width * pad / vw * spec.previewScaleMultiplier
+                sy = size.height * pad / vh * spec.nonUniformScaleYMultiplier * spec.previewScaleMultiplier
+            } else {
+                val s = min(size.width / vw, size.height / vh) * 0.64f * spec.previewScaleMultiplier
+                sx = s
+                sy = s
+            }
+            val dx = (size.width - vw * sx) / 2f
+            val dy = (size.height - vh * sy) / 2f
+            val matrix = Matrix().apply { setScale(sx, sy); postTranslate(dx, dy) }
+            val strokePx = min(sx, sy) * spec.strokeWidthFactor
 
-            outlinePath.set(basePath); outlinePath.transform(matrix)
-            baseFillPath?.let { fillPath.set(it); fillPath.transform(matrix) }
-            baseAccentPath?.let { accentPath.set(it); accentPath.transform(matrix) }
-
-            strokePaint.color = strokeColorArgb
-            strokePaint.strokeWidth = scale * 0.7f
-            fillPaint.color = fillColorArgb
-            accentPaint.color = accentColorArgb
+            val outlinePath = Path(basePath).apply { transform(matrix) }
+            val fillPath: Path? = baseFillPath?.let { Path(it).apply { transform(matrix) } }
+            val accentPath: Path? = baseAccentPath?.let { Path(it).apply { transform(matrix) } }
 
             drawIntoCanvas { canvas ->
-                if (baseFillPath != null) canvas.nativeCanvas.drawPath(fillPath, fillPaint)
-                canvas.nativeCanvas.drawPath(outlinePath, strokePaint)
-                if (baseAccentPath != null) canvas.nativeCanvas.drawPath(accentPath, accentPaint)
+                fillPath?.let {
+                    canvas.nativeCanvas.drawPath(it, Paint().apply {
+                        color = fillColorArgb
+                        style = Paint.Style.FILL
+                        isAntiAlias = true
+                    })
+                }
+                canvas.nativeCanvas.drawPath(outlinePath, Paint().apply {
+                    color = strokeColorArgb
+                    strokeWidth = strokePx
+                    style = Paint.Style.STROKE
+                    isAntiAlias = true
+                })
+                accentPath?.let {
+                    canvas.nativeCanvas.drawPath(it, Paint().apply {
+                        color = accentColorArgb
+                        style = Paint.Style.FILL
+                        isAntiAlias = true
+                    })
+                }
             }
         },
         contentAlignment = Alignment.Center,
@@ -183,243 +224,5 @@ private fun DrawScope.drawDotTrail(color: Color) {
         val yPos = scaledY * ratio
         drawCircle(color, radius = r, center = Offset(xPos, cy + yPos))
         drawCircle(color, radius = r, center = Offset(xPos, cy - yPos))
-    }
-}
-
-@Composable
-private fun MotoChargingPreview(
-    modifier: Modifier = Modifier,
-    animate: Boolean = true,
-) {
-    val progress = if (animate) {
-        val infiniteTransition = rememberInfiniteTransition(label = "moto_progress")
-        val animated by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 100f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 2500, easing = LinearEasing)
-            ),
-            label = "progress",
-        )
-        animated
-    } else {
-        45f
-    }
-
-    val arcColor = Color(0xFF1C6AFF)
-    val thinRingColor = Color(0xFF1C6AFF).copy(alpha = 0.35f)
-    val textColor = Color.White
-
-    Box(
-        modifier = modifier.background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(R.drawable.preview_charging_moto_bg),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-        )
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val squareSide = min(size.width, size.height) * 0.62f
-            val left = (size.width - squareSide) / 2f
-            val top = (size.height - squareSide) / 2f
-
-            val thinInset = squareSide * 0.06f
-            val arcLeft = left + thinInset
-            val arcTop = top + thinInset
-            val arcSize = Size(squareSide - thinInset * 2f, squareSide - thinInset * 2f)
-
-            drawArc(
-                color = thinRingColor,
-                startAngle = 97.5f,
-                sweepAngle = 345f,
-                useCenter = false,
-                topLeft = Offset(arcLeft, arcTop),
-                size = arcSize,
-                style = Stroke(width = 3f, cap = StrokeCap.Round)
-            )
-
-            val sweepAngle = progress / 100f * 345f
-            drawArc(
-                color = arcColor,
-                startAngle = 97.5f,
-                sweepAngle = sweepAngle,
-                useCenter = false,
-                topLeft = Offset(arcLeft, arcTop),
-                size = arcSize,
-                style = Stroke(width = squareSide * 0.09f, cap = StrokeCap.Round)
-            )
-
-            drawIntoCanvas { canvas ->
-                val textPaint = Paint().apply {
-                    color = textColor.toArgb()
-                    textSize = squareSide * 0.28f
-                    isFakeBoldText = true
-                    isAntiAlias = true
-                    textAlign = Paint.Align.CENTER
-                }
-                val percentPaint = Paint().apply {
-                    color = textColor.copy(alpha = 0.7f).toArgb()
-                    textSize = squareSide * 0.11f
-                    isAntiAlias = true
-                    textAlign = Paint.Align.CENTER
-                }
-                val cx = size.width / 2f
-                val cy = size.height / 2f
-                val level = progress.toInt()
-                canvas.nativeCanvas.drawText("$level", cx, cy + textPaint.textSize * 0.35f, textPaint)
-                canvas.nativeCanvas.drawText("%", cx + squareSide * 0.17f, cy - textPaint.textSize * 0.1f, percentPaint)
-            }
-        }
-    }
-}
-
-private val NOTHING_FRAMES = listOf(
-    R.drawable.preview_charging_nothing_ripple_01,
-    R.drawable.preview_charging_nothing_ripple_05,
-    R.drawable.preview_charging_nothing_ripple_09,
-    R.drawable.preview_charging_nothing_ripple_13,
-    R.drawable.preview_charging_nothing_ripple_17,
-    R.drawable.preview_charging_nothing_ripple_20,
-    R.drawable.preview_charging_nothing_ripple_25,
-    R.drawable.preview_charging_nothing_ripple_29,
-    R.drawable.preview_charging_nothing_ripple_33,
-    R.drawable.preview_charging_nothing_ripple_37,
-    R.drawable.preview_charging_nothing_ripple_41,
-)
-
-
-@Composable
-fun ChargingAnimationBannerPreview(
-    packageName: String,
-    modifier: Modifier = Modifier,
-    animate: Boolean = true,
-) {
-    val style = packageName.substringAfterLast('.')
-    if (style == "moto") {
-        MotoChargingPreview(modifier = modifier, animate = animate)
-        return
-    }
-    if (style != "nothing") return
-
-    val frameCount = NOTHING_FRAMES.size
-    val frameIndex = if (animate) {
-        val infiniteTransition = rememberInfiniteTransition(label = "charging_anim")
-        val animatedIndex by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = frameCount.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = frameCount * 80, easing = LinearEasing)
-            ),
-            label = "frame_index",
-        )
-        animatedIndex.toInt().coerceIn(0, frameCount - 1)
-    } else {
-        frameCount / 2
-    }
-
-    Box(
-        modifier = modifier.background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            painter = painterResource(NOTHING_FRAMES[frameIndex]),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-        )
-    }
-}
-
-private const val UDFPS_PREVIEW_FRAME_COUNT = 8
-private val sUdfpsFramesCache = mutableMapOf<String, List<Int>>()
-private val sUdfpsStaticPreviewCache = mutableMapOf<String, Int>()
-private var sUdfpsStaticMapLoaded = false
-
-private fun udfpsFramesFor(context: Context, style: String): List<Int> {
-    sUdfpsFramesCache[style]?.let { return it }
-    val ids = (1..UDFPS_PREVIEW_FRAME_COUNT).mapNotNull { i ->
-        val name = "preview_udfps_${style}_%02d".format(i)
-        val id = context.resources.getIdentifier(name, "drawable", context.packageName)
-        if (id != 0) id else null
-    }
-    sUdfpsFramesCache[style] = ids
-    return ids
-}
-
-private fun udfpsStaticPreviewFor(context: Context, style: String): Int {
-    if (!sUdfpsStaticMapLoaded) {
-        try {
-            val entries = context.resources.getStringArray(R.array.udfps_animation_style_map)
-            for (entry in entries) {
-                val parts = entry.split("|", limit = 2)
-                if (parts.size != 2) continue
-                val drawableName = parts[1]
-                val id = context.resources.getIdentifier(
-                    drawableName, "drawable", context.packageName
-                )
-                if (id != 0) sUdfpsStaticPreviewCache[parts[0]] = id
-            }
-        } catch (_: Exception) {}
-        sUdfpsStaticMapLoaded = true
-    }
-    return sUdfpsStaticPreviewCache[style] ?: 0
-}
-
-@Composable
-fun UdfpsAnimationBannerPreview(
-    packageName: String,
-    modifier: Modifier = Modifier,
-    animate: Boolean = true,
-    containerColor: Color = Color.Black,
-) {
-    val context = LocalContext.current
-    val style = packageName.substringAfterLast('.')
-    val staticPreviewId = remember(style) { udfpsStaticPreviewFor(context, style) }
-    val frames = remember(style, animate, staticPreviewId) {
-        if (animate || staticPreviewId == 0) udfpsFramesFor(context, style) else emptyList()
-    }
-    if (animate && frames.isEmpty()) return
-    if (!animate && staticPreviewId == 0 && frames.isEmpty()) return
-
-    val frameIndex = if (animate) {
-        val infiniteTransition = rememberInfiniteTransition(label = "udfps_anim")
-        val animatedIndex by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = frames.size.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = frames.size * 80, easing = LinearEasing)
-            ),
-            label = "frame_index",
-        )
-        animatedIndex.toInt().coerceIn(0, frames.size - 1)
-    } else if (frames.isNotEmpty()) {
-        frames.size - 1
-    } else {
-        0
-    }
-
-    Box(
-        modifier = modifier.background(containerColor),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (animate) {
-            Image(
-                painter = painterResource(frames[frameIndex]),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
-        } else {
-            val previewModel: Any = if (staticPreviewId != 0) staticPreviewId else frames[frameIndex]
-            GlideImage(
-                model = previewModel,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-                requestBuilderTransform = { it.override(ThumbnailPreloader.THUMB_PX, ThumbnailPreloader.THUMB_PX) },
-            )
-        }
     }
 }

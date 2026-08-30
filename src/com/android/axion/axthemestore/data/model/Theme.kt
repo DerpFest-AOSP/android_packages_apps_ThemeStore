@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +16,6 @@
 */
 
 package com.android.axion.axthemestore.data.model
-
-import android.graphics.drawable.Drawable
 
 data class ThemesResponse(
     val version: Int = 0,
@@ -36,11 +35,12 @@ data class Theme(
     val minSdk: Int = 31,
     val previewImages: List<String> = emptyList(),
     val category: String = "",
-    val pack: String? = null,
     val tags: List<String> = emptyList(),
     val overlays: List<ThemeOverlay> = emptyList(),
     val isUnified: Boolean = false,
-    val supportsRegionSampling: Boolean = false
+    /** Preinstalled RRO on system image — no sideloading. */
+    val isBundledOverlay: Boolean = false,
+    val supportsRegionSampling: Boolean = false,
 ) {
     val totalFileSize: Long
         get() = overlays.sumOf { it.fileSize }
@@ -84,32 +84,22 @@ data class ThemeCategory(
     val icon: String = "palette"
 )
 
-sealed class ThemeInstallState {
-    data object NotInstalled : ThemeInstallState()
-    data class Installed(val installedVersionCode: Int) : ThemeInstallState()
-    data class InstalledInactive(val installedVersionCode: Int) : ThemeInstallState()
-    data class PartiallyInstalled(
-        val installedOverlays: Set<String>,
-        val totalOverlays: Int
-    ) : ThemeInstallState()
-    data class Downloaded(val files: Map<String, java.io.File>) : ThemeInstallState()
-    data class Downloading(val progress: Float, val currentOverlay: String) : ThemeInstallState()
-    data object Installing : ThemeInstallState()
-    data class Error(val message: String) : ThemeInstallState()
+/**
+ * Selection / apply state for preinstalled overlay packs (no APK install flow).
+ */
+sealed class ThemeSelectionState {
+    /** This theme is currently applied (engine matches). */
+    data object Active : ThemeSelectionState()
+
+    /** Overlay package(s) are on device but this theme is not selected. */
+    data object Inactive : ThemeSelectionState()
+
+    /** One or more overlay packages are missing from the system image. */
+    data object Missing : ThemeSelectionState()
+
+    /** Last apply/disable operation failed. */
+    data class Error(val message: String) : ThemeSelectionState()
 }
-
-sealed class OverlayInstallState {
-    data object NotInstalled : OverlayInstallState()
-    data object Installed : OverlayInstallState()
-    data class Downloading(val progress: Float) : OverlayInstallState()
-    data object Installing : OverlayInstallState()
-    data class Error(val message: String) : OverlayInstallState()
-}
-
-fun Theme.hasUpdate(installedVersionCode: Int): Boolean = versionCode > installedVersionCode
-
-fun Theme.getOverlayForComponent(componentId: String): ThemeOverlay? =
-    overlays.find { it.componentId == componentId }
 
 fun Long.formatFileSize(): String {
     return when {
@@ -131,13 +121,5 @@ object StandardComponents {
 
     const val ICON_PACK = "icon_pack"
     const val BACK_GESTURE = "back_gesture"
-    const val CHARGING_ANIMATION = "charging_animation"
     const val BATTERY_STYLE = "battery_style"
 }
-
-data class IconPack(
-    val packageName: String,
-    val label: String,
-    val icon: Drawable? = null
-)
-

@@ -27,7 +27,6 @@ android_app {
     use_embedded_native_libs: true,
 
     static_libs: [
-        "ax_compose",
         "androidx.activity_activity-compose",
         "androidx.core_core-ktx",
         "androidx.appcompat_appcompat",
@@ -50,15 +49,6 @@ android_app {
         "androidx.lifecycle_lifecycle-runtime-compose",
         "kotlinx-coroutines-core",
         "kotlin-parcelize-runtime",
-        "gson-prebuilt-jar-2.9.1",
-        "androidx.exifinterface_exifinterface",
-        "androidx.vectordrawable_vectordrawable-animated",
-        "glide-prebuilt",
-        "glide-ktx-prebuilt",
-        "glide-integration-webpdecoder-prebuilt",
-        "glide-gifdecoder-prebuilt",
-        "glide-disklrucache-prebuilt",
-        "glide-compose-prebuilt",
     ],
 
     kotlincflags: [

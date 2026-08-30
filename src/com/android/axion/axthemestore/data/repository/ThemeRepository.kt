@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,230 +18,270 @@
 package com.android.axion.axthemestore.data.repository
 
 import android.content.Context
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.util.Log
+import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.model.StandardComponents
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.data.model.Theme
 import com.android.axion.axthemestore.data.model.ThemeCategory
-import com.android.axion.axthemestore.data.model.ThemeComponent
 import com.android.axion.axthemestore.data.model.ThemeOverlay
 import com.android.axion.axthemestore.data.model.ThemesResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import com.android.axion.axthemestore.data.model.IconPack
-import android.content.Intent
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 
+/**
+ * Offline catalog from [R.raw.overlay_icon_catalog], produced at build time from
+ * `vendor/overlay` (Icons + themes/battery) and ThemePicker icon-pack RROs
+ * (see [tools/generate_overlay_icon_catalog.py]). Does not enumerate installed APKs
+ * or use the network.
+ *
+ * Extra RROs (battery / back gesture) are merged per [StoreSection.customizationOmsCategoriesToDiscover].
+ */
 class ThemeRepository(private val context: Context) {
-
+    
     companion object {
         private const val TAG = "ThemeRepository"
-        private const val THEMES_JSON_URL =
-            "https://raw.githubusercontent.com/AxionAOSP/AxThemeStore_themes_repository/lineage-23.2/themes.json"
-        private const val CACHE_DURATION_MS = 0L
-        private const val CACHE_FILE_NAME = "themes_cache.json"
+        private const val CACHE_DURATION_MS = 30_000L
 
-        private val THEMEPICKER_CATEGORIES = setOf(
-            "android.theme.customization.font",
-            "android.theme.customization.adaptive_icon_shape",
+        const val CATEGORY_WIFI = "android.theme.customization.wifi_icon"
+        const val CATEGORY_SIGNAL = "android.theme.customization.signal_icon"
+
+        const val ID_CATEGORY_WIFI = "wifi_icons"
+        const val ID_CATEGORY_SIGNAL = "signal_icons"
+        const val ID_CATEGORY_ICON_PACK = StandardComponents.ICON_PACK
+        const val ID_CATEGORY_BATTERY = StandardComponents.BATTERY_STYLE
+
+        /** Bundled / local RRO packages omitted from the store UI (ROM may still ship them). */
+        private val HIDDEN_FROM_STORE_PACKAGES = setOf(
+            "com.android.systemui.battery.faintui",
+        )
+
+        private val ICON_PACK_OVERLAY_ORDER = listOf(
             "android.theme.customization.icon_pack.android",
             "android.theme.customization.icon_pack.systemui",
             "android.theme.customization.icon_pack.settings",
             "android.theme.customization.icon_pack.launcher",
             "android.theme.customization.icon_pack.themepicker",
-            "android.theme.customization.system_palette",
-            "android.theme.customization.accent_color",
-            "android.theme.customization.color_source",
         )
     }
     
     private var cachedResponse: ThemesResponse? = null
+    private var cachedSection: StoreSection? = null
     private var lastFetchTime: Long = 0
 
-    private val cacheFile: File
-        get() = File(context.filesDir, CACHE_FILE_NAME)
-
-    suspend fun fetchThemes(forceRefresh: Boolean = false): Result<ThemesResponse> {
+    suspend fun fetchThemes(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<ThemesResponse> {
         return withContext(Dispatchers.IO) {
             val now = System.currentTimeMillis()
-            if (!forceRefresh && cachedResponse != null &&
+            if (!forceRefresh && cachedResponse != null && cachedSection == section &&
                 (now - lastFetchTime) < CACHE_DURATION_MS) {
                 return@withContext Result.success(cachedResponse!!)
             }
 
             try {
-                val urlWithCacheBust = "$THEMES_JSON_URL?t=$now"
-                val url = URL(urlWithCacheBust)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.apply {
-                    requestMethod = "GET"
-                    connectTimeout = 10000
-                    readTimeout = 10000
-                    setRequestProperty("Accept", "application/json")
-                    setRequestProperty("Cache-Control", "no-cache")
+                val text = context.resources.openRawResource(R.raw.overlay_icon_catalog)
+                    .bufferedReader().use { it.readText() }
+                val json = JSONObject(text)
+                val entries = json.getJSONArray("entries")
+                val pm = context.packageManager
+
+                val catalogThemes = mutableListOf<Theme>()
+                val iconPackRows = mutableListOf<IconPackCatalogRow>()
+
+                for (i in 0 until entries.length()) {
+                    val o = entries.getJSONObject(i)
+                    val packageName = o.getString("package")
+                    val label = o.getString("label")
+                    val kind = o.getString("kind")
+                    val customizationKey = o.getString("customizationKey")
+
+                    if (packageName in HIDDEN_FROM_STORE_PACKAGES) continue
+
+                    if (kind == "iconpack") {
+                        iconPackRows.add(
+                            IconPackCatalogRow(packageName, label, customizationKey)
+                        )
+                        continue
+                    }
+
+                    val categoryId = when (kind) {
+                        "wifi" -> ID_CATEGORY_WIFI
+                        "signal" -> ID_CATEGORY_SIGNAL
+                        "battery" -> ID_CATEGORY_BATTERY
+                        else -> continue
+                    }
+
+                    catalogThemes.add(
+                        bundledSingleOverlayTheme(
+                            categoryId = categoryId,
+                            kind = kind,
+                            label = label,
+                            packageName = packageName,
+                            customizationKey = customizationKey,
+                            versionCode = installedVersionCode(pm, packageName),
+                        )
+                    )
                 }
 
-                val responseCode = connection.responseCode
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    return@withContext loadDiskCache()
-                        ?.let { Result.success(it) }
-                        ?: Result.failure(Exception("HTTP error: $responseCode"))
+                catalogThemes.addAll(groupIconPackThemes(pm, iconPackRows))
+
+                val mergedDiscovered = section.customizationOmsCategoriesToDiscover()?.let { allowed ->
+                    if (allowed.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val discovered = discoverInstalledRroThemes(pm, allowed)
+                        val catalogPackages =
+                            catalogThemes.flatMap { it.overlays.map { overlay -> overlay.packageName } }.toSet()
+                        discovered.filter { theme ->
+                            val pkg = theme.overlays.firstOrNull()?.packageName
+                            pkg != null &&
+                                pkg !in catalogPackages &&
+                                pkg !in HIDDEN_FROM_STORE_PACKAGES
+                        }
+                    }
+                } ?: emptyList()
+
+                val hasIconPacks = catalogThemes.any { it.category == ID_CATEGORY_ICON_PACK }
+                val hasBattery = catalogThemes.any { it.category == ID_CATEGORY_BATTERY }
+
+                val baseCategories = buildList {
+                    add(
+                        ThemeCategory(
+                            id = ID_CATEGORY_WIFI,
+                            name = context.getString(R.string.section_wifi_icons),
+                            icon = "wifi"
+                        )
+                    )
+                    add(
+                        ThemeCategory(
+                            id = ID_CATEGORY_SIGNAL,
+                            name = context.getString(R.string.section_signal_icons),
+                            icon = "signal_cellular_alt"
+                        )
+                    )
+                    if (hasIconPacks) {
+                        add(
+                            ThemeCategory(
+                                id = ID_CATEGORY_ICON_PACK,
+                                name = context.getString(R.string.section_icon_packs),
+                                icon = "apps"
+                            )
+                        )
+                    }
+                    if (hasBattery) {
+                        add(
+                            ThemeCategory(
+                                id = ID_CATEGORY_BATTERY,
+                                name = context.getString(R.string.section_battery_styles),
+                                icon = "battery_full"
+                            )
+                        )
+                    }
                 }
 
-                val jsonResponse = connection.inputStream.bufferedReader().use { it.readText() }
-                connection.disconnect()
+                val knownBaseIds = baseCategories.map { it.id }.toSet()
+                val extraCategories = mergedDiscovered
+                    .map { it.category }
+                    .distinct()
+                    .filter { it !in knownBaseIds }
+                    .map { catId ->
+                        ThemeCategory(
+                            id = catId,
+                            name = formatDiscoveredCategoryTitle(catId),
+                            icon = "palette"
+                        )
+                    }
 
-                val response = parseThemesResponse(jsonResponse)
+                val networkCatalog = catalogThemes.filter {
+                    it.category == ID_CATEGORY_WIFI || it.category == ID_CATEGORY_SIGNAL
+                }
+                val iconPackCatalog = catalogThemes.filter { it.category == ID_CATEGORY_ICON_PACK }
+                val batteryCatalog = catalogThemes.filter { it.category == ID_CATEGORY_BATTERY }
+
+                val (themes, categories) = when (section) {
+                    StoreSection.All -> {
+                        val combined = catalogThemes + mergedDiscovered
+                        Pair(combined, baseCategories + extraCategories)
+                    }
+                    StoreSection.NetworkIcons -> Pair(
+                        networkCatalog,
+                        baseCategories.filter {
+                            it.id == ID_CATEGORY_WIFI || it.id == ID_CATEGORY_SIGNAL
+                        },
+                    )
+                    StoreSection.IconPacks -> Pair(
+                        iconPackCatalog,
+                        listOf(
+                            ThemeCategory(
+                                id = ID_CATEGORY_ICON_PACK,
+                                name = context.getString(R.string.section_icon_packs),
+                                icon = "apps",
+                            )
+                        ),
+                    )
+                    StoreSection.BatteryStyles -> Pair(
+                        batteryCatalog + mergedDiscovered,
+                        buildList {
+                            add(
+                                ThemeCategory(
+                                    id = ID_CATEGORY_BATTERY,
+                                    name = context.getString(R.string.section_battery_styles),
+                                    icon = "battery_full",
+                                )
+                            )
+                            addAll(extraCategories)
+                        },
+                    )
+                    StoreSection.BackGesture,
+                    StoreSection.StatusBarCustomization,
+                    -> Pair(mergedDiscovered, extraCategories)
+                }
+
+                val response = ThemesResponse(
+                    version = json.optInt("version", 1),
+                    lastUpdated = "",
+                    themes = themes,
+                    categories = categories,
+                    components = emptyList()
+                )
                 cachedResponse = response
+                cachedSection = section
                 lastFetchTime = now
 
-                runCatching { cacheFile.writeText(jsonResponse) }
-                    .onFailure { Log.w(TAG, "Failed to persist themes cache", it) }
-
-                Log.d(TAG, "Fetched ${response.themes.size} themes")
+                Log.d(
+                    TAG,
+                    "Loaded store section=$section: ${themes.size} themes, ${categories.size} categories"
+                )
 
                 Result.success(response)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to fetch themes, trying disk cache", e)
-                loadDiskCache()
-                    ?.let { Result.success(it) }
-                    ?: Result.failure(e)
+                Log.e(TAG, "Failed to load overlay_icon_catalog", e)
+                Result.failure(e)
             }
         }
     }
 
-    private fun loadDiskCache(): ThemesResponse? {
-        cachedResponse?.let { return it }
-        val file = cacheFile
-        if (!file.exists()) return null
-        return runCatching {
-            val response = parseThemesResponse(file.readText())
-            cachedResponse = response
-            Log.d(TAG, "Loaded ${response.themes.size} themes from disk cache")
-            response
-        }.getOrNull()
+    suspend fun getThemes(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<List<Theme>> {
+        return fetchThemes(forceRefresh, section).map { it.themes }
     }
 
-    fun hasDiskCache(): Boolean = cachedResponse != null || cacheFile.exists()
-    
-    private fun parseThemesResponse(jsonStr: String): ThemesResponse {
-        val json = JSONObject(jsonStr)
-        val version = json.optInt("version", 0)
-        val lastUpdated = json.optString("lastUpdated", "")
-        
-        val themes = mutableListOf<Theme>()
-        val themesArr = json.optJSONArray("themes")
-        if (themesArr != null) {
-            for (i in 0 until themesArr.length()) {
-                val themeObj = themesArr.getJSONObject(i)
-                themes.add(parseTheme(themeObj))
-            }
-        }
-        
-        val categories = mutableListOf<ThemeCategory>()
-        val catArr = json.optJSONArray("categories")
-        if (catArr != null) {
-            for (i in 0 until catArr.length()) {
-                val catObj = catArr.getJSONObject(i)
-                categories.add(ThemeCategory(
-                   id = catObj.optString("id"),
-                   name = catObj.optString("name"),
-                   icon = catObj.optString("icon", "palette")
-                ))
-            }
-        }
-
-        val components = mutableListOf<ThemeComponent>()
-        val compArr = json.optJSONArray("components")
-        if (compArr != null) {
-            for (i in 0 until compArr.length()) {
-                val compObj = compArr.getJSONObject(i)
-                components.add(ThemeComponent(
-                    id = compObj.optString("id"),
-                    name = compObj.optString("name"),
-                    description = compObj.optString("description"),
-                    targetPackage = compObj.optString("targetPackage"),
-                    icon = compObj.optString("icon", "palette")
-                ))
-            }
-        }
-
-        return ThemesResponse(version, lastUpdated, themes, categories, components)
-    }
-
-    private fun parseTheme(json: JSONObject): Theme {
-        val overlays = mutableListOf<ThemeOverlay>()
-        val overlayArr = json.optJSONArray("overlays")
-        if (overlayArr != null) {
-            for (i in 0 until overlayArr.length()) {
-                val obj = overlayArr.getJSONObject(i)
-                
-                val targets = mutableListOf<String>()
-                val targetsArr = obj.optJSONArray("targets")
-                if (targetsArr != null) {
-                    for (j in 0 until targetsArr.length()) {
-                        targets.add(targetsArr.getString(j))
-                    }
-                }
-                
-                overlays.add(ThemeOverlay(
-                    componentId = obj.optString("componentId"),
-                    packageName = obj.optString("packageName"),
-                    targetPackage = obj.optString("targetPackage"),
-                    targets = targets,
-                    downloadUrl = obj.optString("downloadUrl"),
-                    fileSize = obj.optLong("fileSize", 0),
-                    enabled = obj.optBoolean("enabled", true)
-                ))
-            }
-        }
-        
-        val tags = mutableListOf<String>()
-        val tagsArr = json.optJSONArray("tags")
-        if (tagsArr != null) {
-            for (i in 0 until tagsArr.length()) {
-                tags.add(tagsArr.getString(i))
-            }
-        }
-        
-        val previews = mutableListOf<String>()
-        val prevArr = json.optJSONArray("previewImages")
-        if (prevArr != null) {
-            for (i in 0 until prevArr.length()) {
-                previews.add(prevArr.getString(i))
-            }
-        }
-
-        return Theme(
-            id = json.optString("id"),
-            name = json.optString("name"),
-            description = json.optString("description"),
-            author = json.optString("author"),
-            version = json.optString("version"),
-            versionCode = json.optInt("versionCode"),
-            minSdk = json.optInt("minSdk", 31),
-            previewImages = previews,
-            category = json.optString("category"),
-            pack = json.optString("pack").takeIf { it.isNotEmpty() },
-            tags = tags,
-            overlays = overlays,
-            isUnified = json.optBoolean("isUnified", false),
-            supportsRegionSampling = json.optBoolean("supportsRegionSampling", false)
-        )
-    }
-    
-    suspend fun getThemes(forceRefresh: Boolean = false): Result<List<Theme>> {
-        return fetchThemes(forceRefresh).map { it.themes }
-    }
-    
-    suspend fun getCategories(forceRefresh: Boolean = false): Result<List<ThemeCategory>> {
-        return fetchThemes(forceRefresh).map { it.categories }
+    suspend fun getCategories(
+        forceRefresh: Boolean = false,
+        section: StoreSection = StoreSection.All,
+    ): Result<List<ThemeCategory>> {
+        return fetchThemes(forceRefresh, section).map { it.categories }
     }
     
     suspend fun getThemesByCategory(
-        categoryId: String, 
+        categoryId: String,
         forceRefresh: Boolean = false
     ): Result<List<Theme>> {
         return getThemes(forceRefresh).map { themes ->
@@ -249,16 +290,16 @@ class ThemeRepository(private val context: Context) {
     }
     
     suspend fun searchThemes(
-        query: String, 
+        query: String,
         forceRefresh: Boolean = false
     ): Result<List<Theme>> {
         return getThemes(forceRefresh).map { themes ->
             val lowerQuery = query.lowercase()
             themes.filter { theme ->
                 theme.name.lowercase().contains(lowerQuery) ||
-                theme.description.lowercase().contains(lowerQuery) ||
-                theme.author.lowercase().contains(lowerQuery) ||
-                theme.tags.any { it.lowercase().contains(lowerQuery) }
+                    theme.description.lowercase().contains(lowerQuery) ||
+                    theme.author.lowercase().contains(lowerQuery) ||
+                    theme.tags.any { it.lowercase().contains(lowerQuery) }
             }
         }
     }
@@ -278,165 +319,183 @@ class ThemeRepository(private val context: Context) {
     
     fun clearCache() {
         cachedResponse = null
+        cachedSection = null
         lastFetchTime = 0
     }
-    
-    fun getInstalledThirdPartyThemes(storeThemePackages: Set<String>): List<Theme> {
-        val themes = mutableListOf<Theme>()
-        
-        try {
-            val pm = context.packageManager
-            val installedPackages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
-            
-            for (packageInfo in installedPackages) {
-                val packageName = packageInfo.packageName
-                
-                if (storeThemePackages.contains(packageName)) continue
-                
-                if (packageInfo.applicationInfo?.enabled == false) continue
-                
-                val overlayCategory = packageInfo.overlayCategory
-                val isRroTheme = packageInfo.isOverlayPackage() &&
-                        overlayCategory != null &&
-                        overlayCategory.startsWith("android.theme.customization.") &&
-                        overlayCategory !in THEMEPICKER_CATEGORIES
-                val isAxionTheme = isThemePackage(packageInfo.applicationInfo?.metaData)
 
-                if (isRroTheme || isAxionTheme) {
-                    val appInfo = packageInfo.applicationInfo
-                    val appLabel = appInfo?.let {
-                        pm.getApplicationLabel(it).toString()
-                    } ?: packageName
+    private data class IconPackCatalogRow(
+        val packageName: String,
+        val label: String,
+        val customizationKey: String,
+    )
 
-                    val theme = if (isRroTheme) {
-                        val componentId = overlayCategory!!.removePrefix("android.theme.customization.")
-                        val uiCategory = overlayCategory.removePrefix("android.theme.customization.")
-                        Theme(
-                            id = "local_$packageName",
-                            name = appLabel,
-                            description = "Locally installed theme overlay",
-                            author = "Third-party",
-                            version = packageInfo.versionName ?: "1.0",
-                            versionCode = packageInfo.longVersionCode.toInt(),
-                            minSdk = packageInfo.applicationInfo?.minSdkVersion ?: 31,
-                            previewImages = emptyList(),
-                            category = uiCategory,
-                            tags = listOf(uiCategory, "local"),
-                            overlays = listOf(
-                                ThemeOverlay(
-                                    componentId = componentId,
-                                    packageName = packageName,
-                                    targetPackage = packageInfo.overlayTarget ?: "",
-                                    targets = listOf(overlayCategory),
-                                    downloadUrl = "",
-                                    fileSize = 0,
-                                    enabled = true
-                                )
-                            ),
-                            isUnified = true
-                        )
-                    } else {
-                        val targets = getThemeTargets(packageInfo.applicationInfo?.metaData)
-                        val iconThemeTargets = setOf(
-                            "wifi", "signal",
-                            "android", "systemui", "systemui_icons",
-                            "settings", "com.android.settings",
-                            "framework", "framework-res"
-                        )
-                        val isIconTheme = targets.isNotEmpty() && targets.all { target ->
-                            iconThemeTargets.any { it.equals(target, ignoreCase = true) }
-                        }
-                        val category = if (isIconTheme) "icon_themes" else "local"
-                        Theme(
-                            id = "local_$packageName",
-                            name = appLabel,
-                            description = "Manually installed theme package",
-                            author = "Third-party",
-                            version = packageInfo.versionName ?: "1.0",
-                            versionCode = packageInfo.longVersionCode.toInt(),
-                            minSdk = packageInfo.applicationInfo?.minSdkVersion ?: 31,
-                            previewImages = emptyList(),
-                            category = category,
-                            tags = if (isIconTheme) listOf("icons", "local", "third-party") else listOf("local", "third-party"),
-                            overlays = listOf(
-                                ThemeOverlay(
-                                    componentId = "unified",
-                                    packageName = packageName,
-                                    targetPackage = "",
-                                    targets = targets,
-                                    downloadUrl = "",
-                                    fileSize = 0,
-                                    enabled = true
-                                )
-                            ),
-                            isUnified = true
-                        )
-                    }
-                    themes.add(theme)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to scan for third-party themes", e)
+    private fun groupIconPackThemes(
+        pm: PackageManager,
+        rows: List<IconPackCatalogRow>,
+    ): List<Theme> {
+        if (rows.isEmpty()) return emptyList()
+
+        val grouped = linkedMapOf<String, MutableList<IconPackCatalogRow>>()
+        for (row in rows) {
+            val style = iconPackStyleKey(row.packageName)
+            grouped.getOrPut(style) { mutableListOf() }.add(row)
         }
-        
+
+        return grouped.map { (style, styleRows) ->
+            val sortedRows = styleRows.sortedBy { row ->
+                val idx = ICON_PACK_OVERLAY_ORDER.indexOf(row.customizationKey)
+                if (idx >= 0) idx else ICON_PACK_OVERLAY_ORDER.size
+            }
+            val displayName = sortedRows
+                .firstOrNull { it.customizationKey.endsWith(".android") }
+                ?.label
+                ?: sortedRows.first().label
+            val overlays = sortedRows.map { row ->
+                ThemeOverlay(
+                    componentId = row.customizationKey,
+                    packageName = row.packageName,
+                    targetPackage = "",
+                    targets = emptyList(),
+                    downloadUrl = "",
+                    fileSize = 0L,
+                    enabled = true
+                )
+            }
+            Theme(
+                id = "${ID_CATEGORY_ICON_PACK}_$style",
+                name = displayName,
+                description = "",
+                author = context.getString(R.string.bundled_overlay_author),
+                version = "1.0",
+                versionCode = installedVersionCode(pm, overlays.first().packageName),
+                minSdk = 31,
+                previewImages = emptyList(),
+                category = ID_CATEGORY_ICON_PACK,
+                tags = listOf("iconpack"),
+                overlays = overlays,
+                isUnified = false,
+                isBundledOverlay = true,
+                supportsRegionSampling = false,
+            )
+        }
+    }
+
+    private fun bundledSingleOverlayTheme(
+        categoryId: String,
+        kind: String,
+        label: String,
+        packageName: String,
+        customizationKey: String,
+        versionCode: Int,
+    ): Theme {
+        return Theme(
+            id = "${categoryId}_${packageName.replace('.', '_')}",
+            name = label,
+            description = "",
+            author = context.getString(R.string.bundled_overlay_author),
+            version = "1.0",
+            versionCode = versionCode,
+            minSdk = 31,
+            previewImages = emptyList(),
+            category = categoryId,
+            tags = listOf(kind),
+            overlays = listOf(
+                ThemeOverlay(
+                    componentId = customizationKey,
+                    packageName = packageName,
+                    targetPackage = "",
+                    targets = emptyList(),
+                    downloadUrl = "",
+                    fileSize = 0L,
+                    enabled = true
+                )
+            ),
+            isUnified = false,
+            isBundledOverlay = true,
+            supportsRegionSampling = false,
+        )
+    }
+
+    private fun installedVersionCode(pm: PackageManager, packageName: String): Int {
+        return try {
+            pm.getPackageInfo(packageName, 0).longVersionCode.toInt()
+        } catch (_: PackageManager.NameNotFoundException) {
+            1
+        }
+    }
+
+    private fun discoverInstalledRroThemes(
+        pm: PackageManager,
+        allowedOmsCategories: Set<String>,
+    ): List<Theme> {
+        val themes = mutableListOf<Theme>()
+        @Suppress("DEPRECATION")
+        val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+        for (packageInfo in packages) {
+            if (packageInfo.applicationInfo?.enabled == false) continue
+            if (!packageInfo.hasOverlayTarget()) continue
+            val overlayCategory = packageInfo.overlayCategory ?: continue
+            if (overlayCategory !in allowedOmsCategories) continue
+
+            val appInfo = packageInfo.applicationInfo ?: continue
+            val appLabel = pm.getApplicationLabel(appInfo).toString()
+            val packageName = packageInfo.packageName
+            val componentId = overlayCategory.removePrefix("android.theme.customization.")
+            val uiCategory = componentId
+
+            themes.add(
+                Theme(
+                    id = "local_$packageName",
+                    name = appLabel,
+                    description = context.getString(R.string.local_rro_theme_description),
+                    author = context.getString(R.string.third_party_author),
+                    version = packageInfo.versionName ?: "1.0",
+                    versionCode = packageInfo.longVersionCode.toInt(),
+                    minSdk = appInfo.minSdkVersion,
+                    previewImages = emptyList(),
+                    category = uiCategory,
+                    tags = listOf(uiCategory, "local"),
+                    overlays = listOf(
+                        ThemeOverlay(
+                            componentId = componentId,
+                            packageName = packageName,
+                            targetPackage = packageInfo.overlayTarget ?: "",
+                            targets = listOf(overlayCategory),
+                            downloadUrl = "",
+                            fileSize = 0L,
+                            enabled = true
+                        )
+                    ),
+                    isUnified = true,
+                    isBundledOverlay = false,
+                    supportsRegionSampling = false,
+                )
+            )
+        }
         return themes
     }
-    
-    private fun isThemePackage(metaData: android.os.Bundle?): Boolean {
-        return metaData?.containsKey("axion_theme") == true
+}
+
+private fun iconPackStyleKey(packageName: String): String {
+    val prefix = "com.android.theme.icon_pack."
+    if (packageName.startsWith(prefix)) {
+        val rest = packageName.removePrefix(prefix)
+        val dot = rest.lastIndexOf('.')
+        if (dot > 0) return rest.substring(0, dot)
     }
-    
-    private fun getThemeTargets(metaData: android.os.Bundle?): List<String> {
-        if (metaData == null) return listOf("android", "systemui")
-        
-        val targetsString = metaData.getString("axion_theme")
-        if (!targetsString.isNullOrBlank()) {
-            return targetsString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    return packageName.substringAfterLast('.')
+}
+
+private fun PackageInfo.hasOverlayTarget(): Boolean {
+    return overlayTarget?.isNotEmpty() == true
+}
+
+private fun formatDiscoveredCategoryTitle(categoryId: String): String {
+    return categoryId
+        .replace('_', ' ')
+        .split(' ')
+        .filter { it.isNotEmpty() }
+        .joinToString(" ") { word ->
+            word.replaceFirstChar { it.titlecaseChar() }
         }
-        
-        return listOf("android", "systemui")
-    }
-    
-    suspend fun getInstalledIconPacks(): List<IconPack> = withContext(Dispatchers.IO) {
-        val iconPacks = mutableListOf<IconPack>()
-        val pm = context.packageManager
-        
-        val intentActions = listOf(
-            "org.adw.launcher.THEMES",
-            "com.teslacoilsw.launcher.THEME"
-        )
-        
-        val seenPackages = mutableSetOf<String>()
-        
-        for (action in intentActions) {
-            val intent = Intent(action)
-            val formatList = pm.queryIntentActivities(intent, PackageManager.GET_META_DATA)
-            
-            android.util.Log.d("ThemeRepository", "Icon pack query for action $action found ${formatList.size} packages")
-            
-            for (resolveInfo in formatList) {
-                val packageName = resolveInfo.activityInfo.packageName
-                if (packageName !in seenPackages) {
-                    try {
-                        val appInfo = pm.getApplicationInfo(packageName, 0)
-                        val label = pm.getApplicationLabel(appInfo).toString()
-                        val icon = pm.getApplicationIcon(appInfo)
-                        
-                        iconPacks.add(IconPack(packageName, label, icon))
-                        seenPackages.add(packageName)
-                        android.util.Log.d("ThemeRepository", "Added icon pack: $label ($packageName)")
-                    } catch (e: Exception) {
-                        android.util.Log.e("ThemeRepository", "Failed to load icon pack $packageName", e)
-                    }
-                }
-            }
-        }
-        
-        android.util.Log.d("ThemeRepository", "Total icon packs found: ${iconPacks.size}")
-        
-        val sortedPacks = iconPacks.sortedBy { it.label }
-        
-        listOf(IconPack("", "System Default", null)) + sortedPacks
-    }
-    
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025-2026 AxionOS
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +15,8 @@
  * limitations under the License.
  */
 
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-
 package com.android.axion.axthemestore.ui
 
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -45,19 +43,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,15 +61,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
+import com.android.axion.axthemestore.data.repository.ThemeRepository
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
 private const val CATEGORY_SIGNAL = "android.theme.customization.signal_icon"
 private const val CATEGORY_WIFI = "android.theme.customization.wifi_icon"
-private const val CATEGORY_UDFPS = "android.theme.customization.udfps_animation"
-private const val CATEGORY_UDFPS_ICON = "android.theme.customization.udfps_icon"
 
 data class OverlayPackItem(
     val packageName: String,
@@ -83,6 +78,7 @@ data class OverlayPackItem(
     val previewResPrefix: String = ""
 )
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SystemThemePackagesScreen(
     viewModel: ThemeStoreViewModel,
@@ -90,23 +86,13 @@ fun SystemThemePackagesScreen(
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
-    val isUdfpsSupported = remember { viewModel.getThemeEngineProxy().isUdfpsSupported() }
-    val tabs = remember {
-        mutableListOf(
-            context.getString(R.string.system_icons_title),
-            context.getString(R.string.system_themes_title)
-        ).apply {
-            if (isUdfpsSupported) {
-                add(context.getString(R.string.udfps_animation_title))
-                add(context.getString(R.string.udfps_icon_title))
-            }
-        }.toList()
-    }
+    val tabs = listOf(
+        stringResource(R.string.system_icons_title),
+        stringResource(R.string.system_themes_title)
+    )
 
-    var signalPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
-    var wifiPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
-    var udfpsPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
-    var udfpsIconPacks by remember { mutableStateOf<List<OverlayPackItem>>(emptyList()) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val categoryThemes by viewModel.categoryThemesState.collectAsStateWithLifecycle()
 
     val previewMap = remember {
         val map = mutableMapOf<String, String>()
@@ -120,93 +106,57 @@ fun SystemThemePackagesScreen(
         map
     }
 
-    fun refreshPacks() {
-        val proxy = viewModel.getThemeEngineProxy()
-        val pm = context.packageManager
+    val pm = context.packageManager
+    val activeSignal = categoryThemes[CATEGORY_SIGNAL]
+    val activeWifi = categoryThemes[CATEGORY_WIFI]
 
-        val activeSignal = proxy.getCategoryTheme(CATEGORY_SIGNAL)
-        val activeWifi = proxy.getCategoryTheme(CATEGORY_WIFI)
-
-        signalPacks = proxy.getAvailableOverlays(CATEGORY_SIGNAL).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeSignal,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
+    val signalPacks = uiState.themes
+        .filter { it.category == ThemeRepository.ID_CATEGORY_SIGNAL }
+        .map { theme ->
+            val pkg = theme.overlays.first().packageName
+            OverlayPackItem(
+                packageName = pkg,
+                label = theme.name,
+                isActive = pkg == activeSignal,
+                icon = try {
+                    pm.getApplicationIcon(pm.getApplicationInfo(pkg, 0))
+                } catch (_: Exception) {
+                    null
+                },
+                previewResPrefix = previewMap[pkg] ?: ""
+            )
         }
 
-        wifiPacks = proxy.getAvailableOverlays(CATEGORY_WIFI).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeWifi,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
+    val wifiPacks = uiState.themes
+        .filter { it.category == ThemeRepository.ID_CATEGORY_WIFI }
+        .map { theme ->
+            val pkg = theme.overlays.first().packageName
+            OverlayPackItem(
+                packageName = pkg,
+                label = theme.name,
+                isActive = pkg == activeWifi,
+                icon = try {
+                    pm.getApplicationIcon(pm.getApplicationInfo(pkg, 0))
+                } catch (_: Exception) {
+                    null
+                },
+                previewResPrefix = previewMap[pkg] ?: ""
+            )
         }
-
-        val activeUdfps = proxy.getCategoryTheme(CATEGORY_UDFPS)
-        udfpsPacks = proxy.getAvailableOverlays(CATEGORY_UDFPS).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeUdfps,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
-        }
-
-        val activeUdfpsIcon = proxy.getCategoryTheme(CATEGORY_UDFPS_ICON)
-        udfpsIconPacks = proxy.getAvailableOverlays(CATEGORY_UDFPS_ICON).mapNotNull { pkg ->
-            try {
-                val ai = pm.getApplicationInfo(pkg, 0)
-                OverlayPackItem(
-                    packageName = pkg,
-                    label = ai.loadLabel(pm).toString(),
-                    isActive = pkg == activeUdfpsIcon,
-                    icon = try { pm.getApplicationIcon(pkg) } catch (_: Exception) { null },
-                    previewResPrefix = previewMap[pkg] ?: ""
-                )
-            } catch (_: Exception) { null }
-        }
-    }
-
-    LaunchedEffect(Unit) { refreshPacks() }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceBright,
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.system_themes_title),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceBright,
-                ),
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.system_themes_title)) },
                 scrollBehavior = scrollBehavior
             )
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            PrimaryTabRow(selectedTabIndex = selectedTab) {
+            TabRow(selectedTabIndex = selectedTab) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -216,20 +166,8 @@ fun SystemThemePackagesScreen(
                 }
             }
 
-            val packs = when (selectedTab) {
-                0 -> signalPacks
-                1 -> wifiPacks
-                2 -> if (isUdfpsSupported) udfpsPacks else emptyList()
-                3 -> if (isUdfpsSupported) udfpsIconPacks else emptyList()
-                else -> emptyList()
-            }
-            val category = when (selectedTab) {
-                0 -> CATEGORY_SIGNAL
-                1 -> CATEGORY_WIFI
-                2 -> if (isUdfpsSupported) CATEGORY_UDFPS else ""
-                3 -> if (isUdfpsSupported) CATEGORY_UDFPS_ICON else ""
-                else -> ""
-            }
+            val packs = if (selectedTab == 0) signalPacks else wifiPacks
+            val category = if (selectedTab == 0) CATEGORY_SIGNAL else CATEGORY_WIFI
 
             if (packs.isEmpty()) {
                 EmptyState()
@@ -244,22 +182,14 @@ fun SystemThemePackagesScreen(
                             onApply = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.setCategoryTheme(category, item.packageName)
-                                if (category == CATEGORY_SIGNAL || category == CATEGORY_WIFI) {
-                                    proxy.setIconThemeWithTargets(
-                                        item.packageName,
-                                        proxy.getIconThemeTargets() + listOf(
-                                            if (selectedTab == 0) "signal" else "wifi"
-                                        )
-                                    )
-                                }
-                                proxy.notifyThemeChanged()
-                                refreshPacks()
+                                proxy.notifyThemeChangedAfterOverlayChange()
+                                viewModel.checkInstallStates()
                             },
                             onDisable = {
                                 val proxy = viewModel.getThemeEngineProxy()
                                 proxy.clearCategoryTheme(category)
-                                proxy.notifyThemeChanged()
-                                refreshPacks()
+                                proxy.notifyThemeChangedAfterOverlayChange()
+                                viewModel.checkInstallStates()
                             }
                         )
                     }
@@ -281,7 +211,7 @@ private fun OverlayPackCard(
             containerColor = if (item.isActive)
                 MaterialTheme.colorScheme.primaryContainer
             else
-                MaterialTheme.colorScheme.surfaceContainer
+                MaterialTheme.colorScheme.surfaceContainerHigh
         )
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {

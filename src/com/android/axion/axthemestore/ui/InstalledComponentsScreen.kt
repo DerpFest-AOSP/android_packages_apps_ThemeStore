@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2026 DerpFest AOSP
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +15,6 @@
  * limitations under the License.
 */
 
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-
 package com.android.axion.axthemestore.ui
 
 import androidx.compose.foundation.layout.*
@@ -25,49 +24,38 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.*
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.android.axion.axthemestore.R
-import com.android.axion.axthemestore.engine.ThemeEngineProxy
+import com.android.axion.axthemestore.data.model.StoreSection
 import com.android.axion.axthemestore.viewmodel.ThemeStoreViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InstalledComponentsScreen(
     viewModel: ThemeStoreViewModel,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    storeSection: StoreSection = viewModel.storeSection,
 ) {
     val categoryThemes by viewModel.categoryThemesState.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val themesByPackage = remember(uiState.themes) {
-        uiState.themes.flatMap { theme ->
-            theme.overlays.map { overlay -> overlay.packageName to theme.name }
-        }.toMap()
-    }
-    val iconTheme = remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(Unit) {
-        val proxy = ThemeEngineProxy(viewModel.getApplication())
-        iconTheme.value = proxy.getIconTheme()
+    val filteredCategoryThemes = remember(categoryThemes, storeSection) {
+        categoryThemes.filterKeys { storeSection.isRelevantCategoryKey(it) }
     }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceBright,
         topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
+            TopAppBar(
+                title = { 
                     Text(
                         text = stringResource(R.string.installed_components),
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
@@ -79,10 +67,8 @@ fun InstalledComponentsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceBright,
-                ),
-                scrollBehavior = scrollBehavior,
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
     ) { paddingValues ->
@@ -111,25 +97,47 @@ fun InstalledComponentsScreen(
                 }
             }
             
-            if (categoryThemes.isNotEmpty()) {
+            if (filteredCategoryThemes.isNotEmpty()) {
                 item {
                     SectionHeader(title = stringResource(R.string.icon_theme_components))
                 }
                 
-                items(categoryThemes.entries.toList()) { (category, packageName) ->
+                items(filteredCategoryThemes.entries.toList()) { (category, packageName) ->
                     ComponentCard(
                         componentName = getCategoryDisplayName(category),
-                        packageOrId = themesByPackage[packageName] ?: packageName,
+                        packageOrId = packageName,
                         icon = getCategoryIcon(category),
                         isBuiltIn = false
                     )
+                }
+            } else if (filteredCategoryThemes.isEmpty() && categoryThemes.isNotEmpty()) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.no_components_in_section),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             } else {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
                     ) {
                         Column(
@@ -184,7 +192,7 @@ private fun ComponentCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         shape = MaterialTheme.shapes.small
     ) {
@@ -253,9 +261,14 @@ private fun getCategoryDisplayName(categoryId: String): String {
         "systemui" -> "System UI"
         "wifi" -> "WiFi Icons"
         "signal" -> "Signal Icons"
-        "back_gesture" -> "Back Gesture"
-        "charging_animation" -> "Charging Animation"
-        "battery_style" -> "Battery Style"
+        "android.theme.customization.icon_pack.android" -> "Android icons"
+        "android.theme.customization.icon_pack.systemui" -> "System UI icons"
+        "android.theme.customization.icon_pack.settings" -> "Settings icons"
+        "android.theme.customization.icon_pack.launcher" -> "Launcher icons"
+        "android.theme.customization.icon_pack.themepicker" -> "Theme picker icons"
+        "icon_pack" -> "Icon pack"
+        "android.theme.customization.back_gesture", "back_gesture" -> "Back gesture"
+        "android.theme.customization.battery_style", "battery_style" -> "Battery style"
         else -> categoryId.replace('_', ' ').replaceFirstChar { it.uppercase() }
     }
 }
@@ -264,11 +277,16 @@ private fun getCategoryIcon(categoryId: String): ImageVector {
     return when (categoryId) {
         "wifi" -> Icons.Default.Wifi
         "signal" -> Icons.Default.SignalCellularAlt
+        "android.theme.customization.icon_pack.android",
+        "android.theme.customization.icon_pack.systemui",
+        "android.theme.customization.icon_pack.settings",
+        "android.theme.customization.icon_pack.launcher",
+        "android.theme.customization.icon_pack.themepicker",
+        "icon_pack" -> Icons.Default.Apps
         "systemui" -> Icons.Default.SettingsApplications
         "android" -> Icons.Default.Android
-        "back_gesture" -> Icons.Default.SwipeLeft
-        "charging_animation" -> Icons.Default.Bolt
-        "battery_style" -> Icons.Default.BatteryFull
+        "android.theme.customization.back_gesture", "back_gesture" -> Icons.Default.Gesture
+        "android.theme.customization.battery_style", "battery_style" -> Icons.Default.BatteryFull
         else -> Icons.Default.Category
     }
 }
