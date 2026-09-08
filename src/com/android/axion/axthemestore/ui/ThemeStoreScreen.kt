@@ -592,6 +592,7 @@ private fun ThemeListItem(
             val isBackGesture =
                 packageName.contains("back_gesture", ignoreCase = true) ||
                     category.contains("back_gesture", ignoreCase = true)
+            val isIconPack = category.contains("icon_pack", ignoreCase = true)
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -728,7 +729,7 @@ private fun ThemeListItem(
             }
 
             val sidePreviewIds = getLocalPreviewResIds(LocalContext.current, packageName)
-            if (sidePreviewIds.size > 1) {
+            if (!isIconPack && sidePreviewIds.size > 1) {
                 Box(
                     modifier = Modifier
                         .size(width = 48.dp, height = 80.dp)
